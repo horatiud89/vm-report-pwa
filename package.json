@@ -6,10 +6,13 @@
   "engines": {
     "node": ">=22"
   },
+  "workspaces": [
+    "functions"
+  ],
   "scripts": {
     "test": "vitest run",
     "test:emulators": "firebase emulators:exec --only auth,firestore,storage --project demo-vm-report \"vitest run --config vitest.emulators.config.ts\"",
-    "typecheck": "tsc -p shared",
+    "typecheck": "tsc -p shared && tsc -p functions",
     "build": "npm run build -w app && npm run build -w functions"
   },
   "devDependencies": {

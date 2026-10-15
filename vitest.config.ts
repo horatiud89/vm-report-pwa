@@ -11,6 +11,10 @@ export default defineConfig({
         resolve: { alias: sharedAlias },
         test: { name: 'shared', environment: 'node', include: ['shared/test/**/*.test.ts'], exclude },
       },
+      {
+        resolve: { alias: sharedAlias },
+        test: { name: 'functions', environment: 'node', include: ['functions/test/**/*.test.ts'], exclude },
+      },
     ],
   },
 });
