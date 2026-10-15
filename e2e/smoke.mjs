@@ -447,10 +447,13 @@ async function cycle(browser, backend) {
   await gotoInLanguage(reviewer, '/settings');
   await screen(reviewer, 'settings-ro');
 
-  step('iPhone Safari shows how to add the app to the Home Screen');
+  step('iPhone Safari shows how to add the app to the Home Screen, already on the sign-in page');
   const iphone = await phone(browser, PHONE, {
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
   });
+  await iphone.goto('/login');
+  await iphone.getByRole('heading', { name: 'Add the app to your Home Screen' }).waitFor();
+  await screen(iphone, 'iphone-safari-login-install-guide');
   await signIn(iphone, 'director');
   await iphone.getByRole('heading', { name: 'Add the app to your Home Screen' }).waitFor();
   await screen(iphone, 'iphone-safari-install-guide');

@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import type { MsgKey } from '@shared/i18n';
 import { auth } from '../firebase';
 import { useT } from '../i18n/I18nProvider';
+import { InstallGuide } from '../push/InstallGuide';
+import { currentPlatform } from '../push/platform';
 
 const BAD_CREDENTIALS = ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'];
 
@@ -14,6 +16,8 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<MsgKey | null>(null);
   const [busy, setBusy] = useState(false);
+  // iPhone in Safari: the Home Screen app keeps its own sign-in, so it is added first and signed in to once, there.
+  const [inSafariOnIos] = useState(() => currentPlatform() === 'ios-browser');
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -32,6 +36,7 @@ export function LoginPage() {
   return (
     <main className="content auth-page">
       <h1>{t('login.title')}</h1>
+      {inSafariOnIos && <InstallGuide />}
       <form onSubmit={submit}>
         <label className="field">
           <span>{t('login.email')}</span>

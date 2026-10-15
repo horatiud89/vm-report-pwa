@@ -17,11 +17,11 @@ Dacă ceva nu merge, fă o captură de ecran și notează ora. Cu ele găsesc re
 
 ### iPhone
 
-- [ ] Deschide linkul în **Safari** (nu din Chrome sau din aplicația Gmail) și intră cu contul Store (`+store850`). Sus apare caseta „Add the app to your Home Screen”, cu 3 pași.
+- [ ] Deschide linkul în **Safari** (nu din Chrome sau din aplicația Gmail). Pe ecranul **Sign in**, sub titlu, apare caseta „Add the app to your Home Screen”, cu 3 pași. Nu intra încă în cont: în Safari nu ai nevoie de el.
 - [ ] Compară pașii din casetă cu ce vezi pe iPhone, în limba telefonului: butonul de partajare (pătratul cu săgeata în sus) și opțiunea **Add to Home Screen**. Pe iOS-urile noi, butonul poate fi ascuns în meniul **•••** din Safari, iar opțiunea poate fi mai jos în listă. Notează cum se numesc exact pe telefonul tău, ca să corectez textul dacă e altfel.
 - [ ] Adaugă aplicația pe ecranul principal. Apare iconița **VM Report**.
-- [ ] Deschide aplicația de pe iconiță. Se deschide pe tot ecranul, fără bara Safari (aplicația de pe ecran îți cere din nou login).
-- [ ] Intră din nou cu contul Store. Caseta de instalare nu mai apare; în locul ei e butonul **Turn on notifications**.
+- [ ] Deschide aplicația de pe iconiță. Se deschide pe tot ecranul, fără bara Safari, la ecranul **Sign in**, de data asta fără casetă.
+- [ ] Intră cu contul Store (`+store850`). Sus apare butonul **Turn on notifications**.
 - [ ] Apasă-l și permite notificările (**Allow**). Butonul dispare.
 
 ### Laptop (Chrome)
@@ -31,8 +31,8 @@ Dacă ceva nu merge, fă o captură de ecran și notează ora. Cu ele găsesc re
 
 ### Android
 
-- [ ] Deschide linkul în Chrome și intră în cont. Apare butonul **Install app** (sau, din meniul ⋮, **Install app** / **Add to Home screen**). Instalează aplicația; apare iconița.
-- [ ] Deschide aplicația de pe iconiță, intră în cont și apasă **Turn on notifications** → **Allow**.
+- [ ] Deschide linkul în Chrome și intră în cont. După login apare butonul **Install app** (dacă nu apare, îl găsești în meniul ⋮: **Install app** sau **Add to Home screen**). Instalează aplicația; apare iconița.
+- [ ] Deschide aplicația de pe iconiță. De obicei ești deja în cont, pentru că aplicația folosește aceeași sesiune ca Chrome; dacă vezi **Sign in**, intră din nou. Apasă **Turn on notifications** → **Allow**.
 
 ## 2. Ciclul complet: iPhone = Store, laptop = Head of VM
 
