@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import type { ReactNode } from 'react';
 import type { FeedbackDoc, ReportDoc, ZoneVersion } from '@shared/types';
 import { useT } from '../i18n/I18nProvider';
 import { PhotoWithStrokes } from '../photos/PhotoWithStrokes';
@@ -8,12 +9,14 @@ import { FeedbackNote } from '../ui/FeedbackNote';
  * The photos the reviewer gave feedback on (with the circles drawn on them and the feedback itself) next to the
  * photos the store sent in answer, photo for photo. Narrow screens stack them, Before above After; each is labelled.
  */
-export function BeforeAfter({ report, before, after, feedback }: {
+export function BeforeAfter({ report, before, after, feedback, renderAfter }: {
   report: ReportDoc;
   before: ZoneVersion;
   after: ZoneVersion;
   /** The feedback of the zone; only the part given on `before` is used. */
   feedback: FeedbackDoc[];
+  /** Photo `index` of `after` under its caption, named `alt`: the page shows it there once, with what goes with it. */
+  renderAfter: (index: number, alt: string) => ReactNode;
 }) {
   const { t } = useT();
   const id = useId();
@@ -40,7 +43,7 @@ export function BeforeAfter({ report, before, after, feedback }: {
             {now && (
               <figure className="compare-cell">
                 <figcaption>{t('review.after')} · {name}</figcaption>
-                <PhotoWithStrokes path={now.path} strokes={[]} alt={`${t('review.after')}: ${name}`} />
+                {renderAfter(index, `${t('review.after')}: ${name}`)}
               </figure>
             )}
           </div>

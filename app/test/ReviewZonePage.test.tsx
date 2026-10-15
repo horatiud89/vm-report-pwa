@@ -72,6 +72,11 @@ function renderPage(
 }
 
 const photoSection = (n: number) => screen.getByRole('region', { name: `Photo ${n}` });
+/** A cell of the before/after comparison, by its caption (e.g. "After · Photo 1"). */
+const compareCell = (caption: string) => within(screen.getByRole('region', { name: en['review.beforeAfter'] }))
+  .getAllByRole('figure').find((f) => f.querySelector('figcaption')?.textContent === caption) as HTMLElement;
+/** Every copy of a stored photo on the page, whatever shows it (plain, with circles, or to draw on). */
+const copiesOf = (path: string) => document.querySelectorAll(`img[src="${src(path)}"]`);
 const approveButton = () => screen.queryByRole('button', { name: en['review.approve'] });
 const src = (path: string) => `https://img.test/${path}`;
 
@@ -146,7 +151,7 @@ describe('ReviewZonePage: feedback', () => {
   test('feedback is given on the latest version of a corrected zone', async () => {
     const user = userEvent.setup({ advanceTimers: () => undefined });
     renderPage({ z: correctedZone(), feedbacks: [feedback()] });
-    const first = within(photoSection(1));
+    const first = within(compareCell('After · Photo 1'));
     await user.type(first.getByLabelText(en['review.feedback']), 'Still crooked');
     fireEvent.change(first.getByLabelText(en['review.deadline']), { target: { value: '2026-10-22' } });
     await user.click(first.getByRole('button', { name: en['review.sendFeedback'] }));
@@ -192,6 +197,22 @@ describe('ReviewZonePage: feedback', () => {
     expect(items[1]!.querySelectorAll('polyline')).toHaveLength(1);
     // The plain photo above them carries no circles at all.
     expect(section.querySelector(':scope > .photo-frame')!.querySelectorAll('polyline')).toHaveLength(0);
+  });
+
+  test('while marking, the drawing surface takes the place of the photo instead of adding a copy', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderPage();
+    const first = within(photoSection(1));
+    expect(copiesOf(versionPhoto(1, 1).path)).toHaveLength(1);
+
+    await user.click(first.getByRole('button', { name: en['review.markOnPhoto'] }));
+    expect(copiesOf(versionPhoto(1, 1).path)).toHaveLength(1);
+    expect(first.getByRole('group', { name: en['review.markOnPhoto'] }).querySelector('img')).toHaveAttribute('src', src(versionPhoto(1, 1).path));
+    expect(first.queryByRole('img', { name: 'Photo 1' })).not.toBeInTheDocument();
+
+    await user.click(first.getByRole('button', { name: en['review.markOnPhoto'] }));
+    expect(first.getByRole('img', { name: 'Photo 1' })).toBeInTheDocument();
+    expect(copiesOf(versionPhoto(1, 1).path)).toHaveLength(1);
   });
 
   test('feedback without circles shows no extra photo', () => {
@@ -289,15 +310,38 @@ describe('ReviewZonePage: before and after', () => {
     expect(note).not.toHaveTextContent(en['state.overdue']); // answered, so past deadlines no longer matter
   });
 
-  test('only the feedback of the previous version is in the comparison, not that of the current one', () => {
+  test('Before has the feedback of the previous version, After that of the current one', () => {
     renderPage({
       z: correctedZone({ state: 'needs_correction' }),
       feedbacks: [answered({ comment: 'Old remark' }), feedback({ id: 'n', version: 2, comment: 'New remark', status: 'open' })],
     });
-    const comparison = within(screen.getByRole('region', { name: en['review.beforeAfter'] }));
-    expect(comparison.getByText('Old remark')).toBeInTheDocument();
-    expect(comparison.queryByText('New remark')).not.toBeInTheDocument();
-    expect(within(photoSection(1)).getByText('New remark')).toBeInTheDocument();
+    const before = within(compareCell('Before · Photo 1'));
+    const after = within(compareCell('After · Photo 1'));
+    expect(before.getByText('Old remark')).toBeInTheDocument();
+    expect(before.queryByText('New remark')).not.toBeInTheDocument();
+    expect(after.getByText('New remark')).toBeInTheDocument();
+    expect(after.queryByText('Old remark')).not.toBeInTheDocument();
+  });
+
+  test('each current photo shows once, in its After cell, with the feedback form right under it', () => {
+    renderPage({ z: correctedZone(), feedbacks: [answered()] });
+    expect(copiesOf(versionPhoto(1, 2).path)).toHaveLength(1);
+    expect(screen.queryByRole('region', { name: 'Photo 1' })).not.toBeInTheDocument();
+
+    const after = within(compareCell('After · Photo 1'));
+    expect(after.getByRole('img', { name: /Photo 1/ })).toHaveAttribute('src', src(versionPhoto(1, 2).path));
+    expect(after.getByRole('button', { name: en['review.markOnPhoto'] })).toBeInTheDocument();
+    expect(after.getByRole('button', { name: en['review.sendFeedback'] })).toBeInTheDocument();
+  });
+
+  test('marking in the After cell draws on the photo there, without a second copy of it', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderPage({ z: correctedZone(), feedbacks: [answered()] });
+    const after = within(compareCell('After · Photo 1'));
+
+    await user.click(after.getByRole('button', { name: en['review.markOnPhoto'] }));
+    expect(copiesOf(versionPhoto(1, 2).path)).toHaveLength(1);
+    expect(after.getByRole('group', { name: en['review.markOnPhoto'] }).querySelector('img')).toHaveAttribute('src', src(versionPhoto(1, 2).path));
   });
 
   test('versions older than the previous one are in the history below, with their feedback', () => {

@@ -23,7 +23,7 @@ const zone = makeZone('women-image', {
 });
 
 function renderForm(props: Partial<Parameters<typeof FeedbackForm>[0]> = {}) {
-  return renderApp(<FeedbackForm report={report} zone={zone} version={1} photoIndex={1} {...props} />, { session: signedIn('avm') });
+  return renderApp(<FeedbackForm report={report} zone={zone} version={1} photoIndex={1} photoAlt="Photo 2" {...props} />, { session: signedIn('avm') });
 }
 
 const comment = () => screen.getByLabelText(en['review.feedback']);
@@ -157,6 +157,39 @@ describe('FeedbackForm: sending', () => {
 });
 
 describe('FeedbackForm: marking on the photo', () => {
+  test('shows the photo it is about, which the drawing surface replaces while marking', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderForm();
+    const copies = () => document.querySelectorAll(`img[src="https://img.test/${photo(2).path}"]`);
+    expect(screen.getByRole('img', { name: 'Photo 2' })).toHaveAttribute('src', `https://img.test/${photo(2).path}`);
+
+    await user.click(markButton());
+    expect(screen.queryByRole('img', { name: 'Photo 2' })).not.toBeInTheDocument();
+    expect(copies()).toHaveLength(1);
+
+    await user.click(markButton());
+    expect(screen.getByRole('img', { name: 'Photo 2' })).toBeInTheDocument();
+    expect(copies()).toHaveLength(1);
+  });
+
+  test('starting to mark brings the drawing surface into view (feedback notes may stand between it and the button)', async () => {
+    const scrolled: Element[] = [];
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value(this: Element, options: ScrollIntoViewOptions) { expect(options).toEqual({ block: 'nearest' }); scrolled.push(this); },
+      configurable: true,
+    });
+    try {
+      const user = userEvent.setup({ advanceTimers: () => undefined });
+      renderForm();
+      expect(scrolled).toHaveLength(0);
+      await user.click(markButton());
+      expect(scrolled).toHaveLength(1);
+      expect(scrolled[0]).toContainElement(screen.getByRole('group', { name: en['review.markOnPhoto'] }));
+    } finally {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    }
+  });
+
   test('the photo to draw on only shows after Mark on photo is tapped, and goes away when tapped again', async () => {
     const user = userEvent.setup({ advanceTimers: () => undefined });
     renderForm();

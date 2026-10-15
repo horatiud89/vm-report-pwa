@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import type { FeedbackDoc, ReportDoc, ZoneDoc } from '@shared/types';
+import type { FeedbackDoc, ReportDoc, ZoneDoc, ZoneVersion } from '@shared/types';
 import { approveZone } from '../api';
 import { useFeedback, useReport, useZone } from '../data/hooks';
 import { useT } from '../i18n/I18nProvider';
@@ -15,6 +15,34 @@ import { BeforeAfter } from './BeforeAfter';
 import { FeedbackForm } from './FeedbackForm';
 
 const newestFirst = (a: FeedbackDoc, b: FeedbackDoc) => b.createdAt - a.createdAt;
+
+/** Photo `index` of the current version, the feedback given on it, and the form for more. */
+function CurrentPhoto({ report, zone, version, index, alt, feedback }: {
+  report: ReportDoc;
+  zone: ZoneDoc;
+  version: ZoneVersion;
+  index: number;
+  alt: string;
+  feedback: FeedbackDoc[];
+}) {
+  const path = version.photos[index]?.path ?? '';
+  const notes = feedback.filter((f) => f.version === version.n && f.photoIndex === index).sort(newestFirst);
+  return (
+    <FeedbackForm report={report} zone={zone} version={version.n} photoIndex={index} photoAlt={alt}>
+      {notes.map((f) => (
+        // Each feedback keeps its own copy of the photo, so its circles are not mixed up with another's.
+        <div key={f.id} className="feedback-item">
+          {f.strokes.length > 0 && (
+            <div className="feedback-photo">
+              <PhotoWithStrokes path={path} strokes={f.strokes} />
+            </div>
+          )}
+          <FeedbackNote feedback={f} report={report} showStatus />
+        </div>
+      ))}
+    </FeedbackForm>
+  );
+}
 
 /** A zone of a sent report for the reviewer: what the store sent, the feedback so far, a form per photo, Approve. */
 export function ReviewZonePage() {
@@ -75,27 +103,25 @@ function ZoneReview({ report, zone, feedback }: { report: ReportDoc; zone: ZoneD
         </section>
       )}
 
-      {included && previous && <BeforeAfter report={report} before={previous} after={latest} feedback={feedback} />}
+      {/* Each current photo shows once: in its After cell when there is an earlier version, else in its own section. */}
+      {included && previous && (
+        <BeforeAfter
+          report={report}
+          before={previous}
+          after={latest}
+          feedback={feedback}
+          renderAfter={(index, alt) => (
+            <CurrentPhoto key={latest.photos[index]?.path} report={report} zone={zone} version={latest} index={index} alt={alt} feedback={feedback} />
+          )}
+        />
+      )}
 
-      {included && latest.photos.map((photo, index) => {
-        const notes = feedback.filter((f) => f.version === latest.n && f.photoIndex === index).sort(newestFirst);
+      {included && !previous && latest.photos.map((photo, index) => {
         const name = t('store.photo', { n: index + 1 });
         return (
           <section key={photo.path} aria-labelledby={`${ids}-photo-${index}`}>
             <h2 id={`${ids}-photo-${index}`}>{name}</h2>
-            <PhotoWithStrokes path={photo.path} strokes={[]} alt={name} />
-            {notes.map((f) => (
-              // Each feedback keeps its own copy of the photo, so its circles are not mixed up with another's.
-              <div key={f.id} className="feedback-item">
-                {f.strokes.length > 0 && (
-                  <div className="feedback-photo">
-                    <PhotoWithStrokes path={photo.path} strokes={f.strokes} />
-                  </div>
-                )}
-                <FeedbackNote feedback={f} report={report} showStatus />
-              </div>
-            ))}
-            <FeedbackForm report={report} zone={zone} version={latest.n} photoIndex={index} />
+            <CurrentPhoto report={report} zone={zone} version={latest} index={index} alt={name} feedback={feedback} />
           </section>
         );
       })}
