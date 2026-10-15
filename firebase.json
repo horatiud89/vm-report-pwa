@@ -27,6 +27,8 @@
     "storage": { "host": "127.0.0.1", "port": 9199 },
     "functions": { "host": "127.0.0.1", "port": 5001 },
     "hosting": { "host": "127.0.0.1", "port": 5000 },
+    "eventarc": { "host": "127.0.0.1", "port": 9299 },
+    "tasks": { "host": "127.0.0.1", "port": 9499 },
     "hub": { "host": "127.0.0.1", "port": 4400 },
     "logging": { "host": "127.0.0.1", "port": 4500 },
     "ui": { "enabled": false }

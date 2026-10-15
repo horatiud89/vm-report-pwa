@@ -6,6 +6,6 @@
     ],
     "method": ["GET"],
     "maxAgeSeconds": 3600,
-    "responseHeader": ["Content-Type"]
+    "responseHeader": ["Content-Type", "Authorization", "X-Firebase-Storage-Version", "X-Firebase-GMPID", "X-Firebase-AppCheck"]
   }
 ]
