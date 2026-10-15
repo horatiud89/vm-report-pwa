@@ -7,7 +7,8 @@ import type { PhotoRef, ReportDoc, ZoneDoc } from '@shared/types';
 import * as api from '../src/api';
 import * as compress from '../src/photos/compress';
 import { DraftZonePage } from '../src/store/DraftZonePage';
-import { clearZoneSessions } from '../src/store/zoneSession';
+import { onLostUpload } from '../src/store/lostUploads';
+import { clearZoneSessions, reportSaveState } from '../src/store/zoneSession';
 import { live, makeReport, makeZone, photo } from './fixtures';
 import { renderApp, signedIn } from './helpers';
 
@@ -145,6 +146,21 @@ describe('DraftZonePage: picking photos', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Photo 1' })).toBeInTheDocument();
     expect(screen.getByText('Add photo (1/3)')).toBeInTheDocument();
+  });
+
+  test('a failed upload while the zone is open is shown here only: not a lost photo for the report or a second toast', async () => {
+    vi.mocked(compress.uploadZonePhoto).mockRejectedValue(new Error('storage/retry-limit-exceeded'));
+    const lost = vi.fn();
+    const stop = onLostUpload(lost);
+    try {
+      const { container } = renderZone(zoneWith([photo(1)]));
+      await userEvent.setup().upload(cameraInput(container), jpeg());
+      expect(await screen.findByText(en['error.generic'])).toBeInTheDocument();
+    } finally {
+      stop();
+    }
+    expect(lost).not.toHaveBeenCalled();
+    expect(reportSaveState('r1').lostUploads).toEqual([]);
   });
 
   test('at 3 photos both buttons are disabled and the counter reads 3/3', () => {

@@ -38,6 +38,7 @@ export const en = {
   'store.sent': 'Report sent.',
   'store.newPhotos': 'New photos',
   'store.version': 'Version {n}',
+  'store.uploadFailed': 'The photo for {zone} was not uploaded. Add it again.',
 
   'review.new': 'New',
   'review.allCountries': 'All countries',

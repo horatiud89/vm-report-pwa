@@ -9,6 +9,8 @@ import { NotificationsButton } from '../push/NotificationsButton';
 import { currentPlatform, currentPushSupported } from '../push/platform';
 import { onForegroundMessage, refreshPush } from '../push/push';
 import type { ForegroundMessage } from '../push/push';
+import { onLostUpload } from '../store/lostUploads';
+import type { LostUpload } from '../store/lostUploads';
 import { useToast } from './Toast';
 
 export const APP_TITLE = 'VM Photo Report';
@@ -17,6 +19,7 @@ export const APP_TITLE = 'VM Photo Report';
 export function Layout() {
   const { t } = useT();
   const { user, claims } = useSession();
+  useLostUploadToasts();
   return (
     <>
       <header className="app-header">
@@ -69,4 +72,15 @@ function useForegroundToasts(enabled: boolean) {
     toast(body, path ? { label: t('common.open'), onClick: () => navigate(path) } : undefined);
   });
   useEffect(() => (enabled ? onForegroundMessage((message) => show(message)) : undefined), [enabled]);
+}
+
+/** A photo upload that failed after the store left its zone: named in a toast on any screen, Open going to the zone. */
+function useLostUploadToasts() {
+  const { t } = useT();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const show = useEffectEvent(({ reportId, zoneId, zoneName }: LostUpload) => {
+    toast(t('store.uploadFailed', { zone: zoneName }), { label: t('common.open'), onClick: () => navigate(`/r/${reportId}/z/${zoneId}`) });
+  });
+  useEffect(() => onLostUpload((lost) => show(lost)), []);
 }

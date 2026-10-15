@@ -40,6 +40,7 @@ export const ro: Dict = {
   'store.sent': 'Raportul a fost trimis.',
   'store.newPhotos': 'Poze noi',
   'store.version': 'Versiunea {n}',
+  'store.uploadFailed': 'Poza pentru {zone} nu s-a încărcat. Adaug-o din nou.',
 
   'review.new': 'Nou',
   'review.allCountries': 'Toate țările',

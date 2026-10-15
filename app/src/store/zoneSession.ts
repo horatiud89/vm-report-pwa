@@ -1,6 +1,7 @@
 import type { PhotoRef, ReportDoc, ZoneDoc } from '@shared/types';
 import { updateDraftZone } from '../api';
 import { uploadZonePhoto } from '../photos/compress';
+import { reportLostUpload } from './lostUploads';
 
 /** A comment is saved this long after the last keystroke (or at once when the field is left). */
 export const COMMENT_SAVE_DELAY_MS = 800;
@@ -47,13 +48,21 @@ export class ZoneSession {
   private failed = false;
   private everSaved = false;
   private errors = 0;
+  /** An upload failed while no screen showed the zone: the store believes in a photo that is not there. */
+  private lost = false;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private attached = 0;
   private lastActivity = Date.now();
   private readonly listeners = new Set<Listener>();
   private snapshot: SessionState;
 
-  constructor(readonly report: ReportDoc, readonly zoneId: string, private readonly version: number, initial: Edit) {
+  constructor(
+    readonly report: ReportDoc,
+    readonly zoneId: string,
+    readonly zoneName: string,
+    private readonly version: number,
+    initial: Edit,
+  ) {
     this.edit = initial;
     this.snapshot = this.state();
   }
@@ -79,15 +88,24 @@ export class ZoneSession {
     return !this.running && this.failed && this.rev !== this.savedRev;
   }
 
-  /** Nothing to wait for or to send, and nobody looking for a while: a later visit may start from the snapshot. */
-  expired(now: number): boolean {
-    return this.attached === 0 && !this.pending && !this.unsaved && now - this.lastActivity > SETTLED_TTL_MS;
+  /** A photo upload failed after the user had left the zone; the zone being opened again clears it. */
+  get lostUpload(): boolean {
+    return this.lost;
   }
 
-  /** A screen shows this session. */
+  /** Nothing to wait for or to send, and nobody looking for a while: a later visit may start from the snapshot. */
+  expired(now: number): boolean {
+    return this.attached === 0 && !this.pending && !this.unsaved && !this.lost && now - this.lastActivity > SETTLED_TTL_MS;
+  }
+
+  /** A screen shows this session; a lost upload is then in front of the user, who can add the photo again. */
   attach(): void {
     this.attached += 1;
     if (sessions.get(this.key) !== this) sessions.set(this.key, this);
+    if (this.lost) {
+      this.lost = false;
+      this.emit();
+    }
   }
 
   /** The screen is gone; what is not saved yet is sent now, and a save that failed is tried once more. */
@@ -119,7 +137,11 @@ export class ZoneSession {
       this.uploads = this.uploads.filter((u) => u.id !== id);
       this.errors += 1;
       this.lastActivity = Date.now();
+      // An open zone screen shows the error itself; otherwise the report and a toast must say which zone lost a photo.
+      const unseen = this.attached === 0;
+      if (unseen) this.lost = true;
       this.emit();
+      if (unseen) reportLostUpload({ reportId: this.report.id, zoneId: this.zoneId, zoneName: this.zoneName });
     }
   }
 
@@ -211,7 +233,7 @@ export function sessionFor(report: ReportDoc, zone: ZoneDoc): ZoneSession {
   const existing = sessions.get(`${report.id}/${zone.id}`);
   if (existing && !existing.expired(Date.now())) return existing;
   const version = zone.versions[0];
-  const created = new ZoneSession(report, zone.id, version?.n ?? 1, {
+  const created = new ZoneSession(report, zone.id, zone.name, version?.n ?? 1, {
     photos: version?.photos ?? [],
     comment: version?.storeComment ?? '',
     notInCampaign: zone.state === 'not_in_campaign',
@@ -226,18 +248,33 @@ export function subscribeSessions(listener: Listener): () => void {
   return () => { sessionListeners.delete(listener); };
 }
 
+export interface ReportSaveState {
+  /** 'pending' while an upload or save is under way, 'failed' when a save failed and still has to be repeated. */
+  saves: 'idle' | 'pending' | 'failed';
+  /** Ids of the zones with a lost upload (see ZoneSession.lostUpload). */
+  lostUploads: string[];
+}
+
+const lastSaveStates = new Map<string, ReportSaveState>();
+
 /**
- * Whether the zones of a report are all stored: 'pending' while an upload or save is under way, 'failed' when a
- * save failed and still has to be repeated, otherwise 'idle'. A report must not be sent before it is 'idle'.
+ * Whether the zones of a report are all stored. A report must not be sent before its saves are 'idle' and no zone
+ * has a lost upload. The same object comes back while nothing changed (useSyncExternalStore compares snapshots).
  */
-export function reportSaveState(reportId: string): 'idle' | 'pending' | 'failed' {
-  let state: 'idle' | 'failed' = 'idle';
+export function reportSaveState(reportId: string): ReportSaveState {
+  let saves: ReportSaveState['saves'] = 'idle';
+  const lostUploads: string[] = [];
   for (const [key, session] of sessions) {
     if (!key.startsWith(`${reportId}/`)) continue;
-    if (session.pending) return 'pending';
-    if (session.unsaved) state = 'failed';
+    if (session.pending) saves = 'pending';
+    else if (session.unsaved && saves === 'idle') saves = 'failed';
+    if (session.lostUpload) lostUploads.push(session.zoneId);
   }
-  return state;
+  const last = lastSaveStates.get(reportId);
+  if (last && last.saves === saves && last.lostUploads.join() === lostUploads.join()) return last;
+  const next = { saves, lostUploads };
+  lastSaveStates.set(reportId, next);
+  return next;
 }
 
 export function retryFailedSaves(reportId: string): void {
@@ -250,4 +287,5 @@ export function retryFailedSaves(reportId: string): void {
 export function clearZoneSessions(): void {
   for (const session of sessions.values()) session.dispose();
   sessions.clear();
+  lastSaveStates.clear();
 }

@@ -2,9 +2,11 @@ import { act, cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { t } from '@shared/i18n';
 import { en } from '@shared/i18n/en';
 import type { Role } from '@shared/types';
 import type { ForegroundMessage } from '../src/push/push';
+import { reportLostUpload } from '../src/store/lostUploads';
 import { Layout } from '../src/ui/Layout';
 import { renderApp, signedIn } from './helpers';
 
@@ -216,5 +218,27 @@ describe('Layout foreground pushes', () => {
     onDevice(IPHONE_17_4);
     renderLayout();
     expect(push.onForegroundMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('Layout lost uploads', () => {
+  test('a photo whose upload failed after the store left the zone is toasted by name wherever the user is; Open goes to the zone', async () => {
+    onDevice(ANDROID_CHROME, { permission: 'denied' });
+    renderLayout();
+
+    act(() => reportLostUpload({ reportId: 'r1', zoneId: 'women-image', zoneName: "Women's Image" }));
+
+    expect(screen.getByRole('status')).toHaveTextContent(t('en', 'store.uploadFailed', { zone: "Women's Image" }));
+    await userEvent.setup().click(screen.getByRole('button', { name: en['common.open'] }));
+    expect(screen.getByTestId('where')).toHaveTextContent('/r/r1/z/women-image');
+  });
+
+  test('stops listening when the layout goes away', () => {
+    onDevice(ANDROID_CHROME, { permission: 'denied' });
+    const { unmount } = renderLayout();
+    unmount();
+    renderApp(<Where />);
+    act(() => reportLostUpload({ reportId: 'r1', zoneId: 'women-image', zoneName: "Women's Image" }));
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 });

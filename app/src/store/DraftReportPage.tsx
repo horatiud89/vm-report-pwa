@@ -34,10 +34,12 @@ export function DraftReportPage() {
 
   const isDraft = current.status === 'draft';
   const complete = canSend(zones.data.map((z) => z.state));
-  const ready = complete && saveState === 'idle';
+  const stored = saveState.saves === 'idle' && saveState.lostUploads.length === 0;
+  const ready = complete && stored;
+  const lostZones = zones.data.filter((z) => saveState.lostUploads.includes(z.id));
 
   async function send() {
-    if (sendStarted.current || saveState !== 'idle') return;
+    if (sendStarted.current || !stored) return;
     sendStarted.current = true;
     setSending(true);
     try {
@@ -61,14 +63,20 @@ export function DraftReportPage() {
 
       {isDraft && (
         <div className="action-bar">
-          {saveState === 'pending' && <p className="hint">{t('store.saving')}</p>}
-          {saveState === 'failed' && (
+          {lostZones.map((zone) => (
+            <div key={zone.id} className="hint" role="alert">
+              <p>{t('store.uploadFailed', { zone: zone.name })}</p>
+              <Link to={`/r/${reportId}/z/${zone.id}`} className="btn btn-small">{t('common.open')}</Link>
+            </div>
+          ))}
+          {saveState.saves === 'pending' && <p className="hint">{t('store.saving')}</p>}
+          {saveState.saves === 'failed' && (
             <div className="hint" role="alert">
               <p>{t('error.generic')}</p>
               <button type="button" className="btn btn-small" onClick={() => retryFailedSaves(reportId)}>{t('common.retry')}</button>
             </div>
           )}
-          {saveState === 'idle' && !complete && <p className="hint">{t('store.sendHint')}</p>}
+          {stored && !complete && <p className="hint">{t('store.sendHint')}</p>}
           <button type="button" className="btn btn-primary" disabled={!ready || sending} onClick={() => void send()}>
             {t('store.send')}
           </button>

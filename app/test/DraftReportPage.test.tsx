@@ -2,10 +2,12 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { t } from '@shared/i18n';
 import { en } from '@shared/i18n/en';
 import { STORE_850 } from '@shared/store850';
 import * as api from '../src/api';
 import { DraftReportPage } from '../src/store/DraftReportPage';
+import { onLostUpload } from '../src/store/lostUploads';
 import { clearZoneSessions, sessionFor } from '../src/store/zoneSession';
 import * as compress from '../src/photos/compress';
 import { allZoneDocs, live, makeReport, makeZone, photo } from './fixtures';
@@ -164,6 +166,50 @@ describe('DraftReportPage: zone edits still being saved', () => {
     renderPage(allZoneDocs('submitted'), makeReport({ status: 'sent', sentAt: 5 }));
     act(() => { void photoInFlight(); });
     expect(screen.queryByRole('button', { name: en['store.send'] })).not.toBeInTheDocument();
+  });
+});
+
+describe('DraftReportPage: a photo whose upload failed after the user left the zone', () => {
+  const file = () => new File([new Uint8Array(4)], 'a.jpg', { type: 'image/jpeg' });
+  const lostMessage = t('en', 'store.uploadFailed', { zone: "Women's Image" });
+
+  /** The user took a photo in Women's Image, went back to the report, and the upload then failed. */
+  async function uploadFailsAfterLeaving() {
+    vi.mocked(compress.uploadZonePhoto).mockRejectedValue(new Error('storage/retry-limit-exceeded'));
+    const session = sessionFor(makeReport(), makeZone('women-image'));
+    await act(async () => { await session.addPhoto(file()); });
+    return session;
+  }
+
+  test('the report names the zone in an alert with a way to open it, and Send waits', async () => {
+    renderPage(allZoneDocs('photo_added'));
+    await uploadFailsAfterLeaving();
+
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent(lostMessage);
+    expect(within(alert).getByRole('link', { name: en['common.open'] })).toHaveAttribute('href', '/r/r1/z/women-image');
+    expect(sendButton()).toBeDisabled();
+    expect(api.updateDraftZone).not.toHaveBeenCalled();
+  });
+
+  test('opening the zone clears it: the store sees there what is missing', async () => {
+    renderPage(allZoneDocs('photo_added'));
+    const session = await uploadFailsAfterLeaving();
+
+    act(() => session.attach());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(sendButton()).toBeEnabled();
+  });
+
+  test('is announced once, with the report, the zone and its name, for a toast wherever the user is', async () => {
+    const lost = vi.fn();
+    const stop = onLostUpload(lost);
+    try {
+      await uploadFailsAfterLeaving();
+    } finally {
+      stop();
+    }
+    expect(lost).toHaveBeenCalledExactlyOnceWith({ reportId: 'r1', zoneId: 'women-image', zoneName: "Women's Image" });
   });
 });
 

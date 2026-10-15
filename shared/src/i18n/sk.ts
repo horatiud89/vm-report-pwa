@@ -39,6 +39,7 @@ export const sk: Dict = {
   'store.sent': 'Report bol odoslaný.',
   'store.newPhotos': 'Nové fotky',
   'store.version': 'Verzia {n}',
+  'store.uploadFailed': 'Fotku pre {zone} sa nepodarilo nahrať. Pridajte ju znova.',
 
   'review.new': 'Nový',
   'review.allCountries': 'Všetky krajiny',
