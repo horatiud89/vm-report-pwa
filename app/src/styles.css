@@ -265,12 +265,34 @@ textarea {
 }
 
 .toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   max-width: 640px;
   padding: 12px 16px;
   border-radius: 8px;
   background: var(--text);
   color: var(--bg);
   font-weight: 600;
+}
+
+/* Only the action takes taps; the rest of the toast lets them through to the screen. */
+.toast-action {
+  flex-shrink: 0;
+  min-height: var(--tap);
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--bg);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.toast-action:focus-visible {
+  outline-color: var(--bg);
 }
 
 /* Session loading indicator */
@@ -305,4 +327,36 @@ textarea {
 
 .actions .btn-primary {
   width: auto;
+}
+
+/* Device banner above the screen: Add to Home Screen guide, Install app, Turn on notifications */
+.banner {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.banner-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.banner-steps {
+  margin: 0;
+  padding-left: 24px;
+}
+
+.banner-steps li + li {
+  margin-top: 4px;
+}
+
+.share-icon {
+  margin-left: 6px;
+  vertical-align: -4px;
+}
+
+.banner-action {
+  margin-top: 16px;
 }

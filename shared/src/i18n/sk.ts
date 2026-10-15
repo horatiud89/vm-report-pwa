@@ -46,6 +46,7 @@ export const sk: Dict = {
 
   'common.deadline': 'Termín {date}',
   'common.retry': 'Skúsiť znova',
+  'common.open': 'Otvoriť',
 
   'push.enable': 'Zapnúť upozornenia',
   'push.enabled': 'Upozornenia sú zapnuté',

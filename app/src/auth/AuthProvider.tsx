@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 import type { Claims, Country, Role, UserDoc } from '@shared/types';
 import { auth, db } from '../firebase';
+import { disablePush } from '../push/push';
 
 export interface Session {
   user: User | null;
@@ -16,7 +17,7 @@ export interface Session {
   /** The users/{uid} document; null until it arrives or when it does not exist. */
   profile: UserDoc | null;
   loading: boolean;
-  /** The one place that ends a session; push cleanup is added here later. */
+  /** The one place that ends a session: removes this device's push token from the user, then signs out. */
   logout: () => Promise<void>;
 }
 
@@ -27,6 +28,9 @@ const PROFILE_WAIT_MS = 3000;
 
 /** How long the first screen waits for the token claims before offering a retry (the SDK itself may take 30 s). */
 const CLAIMS_WAIT_MS = 8000;
+
+/** How long logout waits for the push cleanup; offline its Firestore write is never confirmed. */
+const PUSH_CLEANUP_WAIT_MS = 3000;
 
 const ROLES: readonly Role[] = ['store', 'avm', 'am', 'head_vm', 'director'];
 const COUNTRIES: readonly Country[] = ['CZ', 'SK', 'RO'];
@@ -87,7 +91,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { unsubscribe(); clearTimeout(giveUp); };
   }, [user]);
 
-  const logout = useCallback(() => signOut(auth), []);
+  const uid = user?.uid;
+  const logout = useCallback(async () => {
+    if (uid) {
+      // Before signing out, while the write is still allowed. Its errors never block logout, nor does a slow one.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        disablePush(uid).catch(() => undefined),
+        new Promise((resolve) => { timer = setTimeout(resolve, PUSH_CLEANUP_WAIT_MS); }),
+      ]);
+      clearTimeout(timer);
+    }
+    await signOut(auth);
+  }, [uid]);
 
   const claimsHere = user !== null && claimsOf?.user === user ? claimsOf : null;
   const profileHere = user !== null && profileOf?.user === user ? profileOf : null;

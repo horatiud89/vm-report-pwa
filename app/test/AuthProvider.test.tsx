@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   signOut: vi.fn(),
   doc: vi.fn(),
   onSnapshot: vi.fn(),
+  disablePush: vi.fn(),
 }));
 
 vi.mock('firebase/auth', () => ({
@@ -23,6 +24,7 @@ vi.mock('firebase/auth', () => ({
 }));
 vi.mock('firebase/firestore', () => ({ doc: mocks.doc, onSnapshot: mocks.onSnapshot, updateDoc: vi.fn() }));
 vi.mock('../src/firebase', () => ({ auth: { name: 'test-auth' }, db: { name: 'test-db' } }));
+vi.mock('../src/push/push', () => ({ disablePush: mocks.disablePush, enablePush: vi.fn(), refreshPush: vi.fn(), onForegroundMessage: vi.fn() }));
 
 const PROFILE = { email: 'a@example.com', role: 'store', country: 'CZ', storeId: '850', displayName: 'A', language: 'cs', fcmTokens: [] };
 
@@ -60,6 +62,7 @@ beforeEach(() => {
   mocks.signOut.mockReset().mockResolvedValue(undefined);
   mocks.doc.mockReset().mockImplementation((_db, ...path: string[]) => ({ path: path.join('/') }));
   mocks.onSnapshot.mockReset();
+  mocks.disablePush.mockReset().mockResolvedValue(undefined);
 });
 
 describe('AuthProvider', () => {
@@ -184,13 +187,44 @@ describe('AuthProvider', () => {
     expect(mocks.onSnapshot).not.toHaveBeenCalled();
   });
 
-  test('logout signs out of Firebase Auth', async () => {
+  test('logout removes this device\'s push token from the user, then signs out of Firebase Auth', async () => {
     signInAs(fakeUser({ role: 'store', country: 'CZ', storeId: '850' }));
     render(<AuthProvider><Probe /></AuthProvider>);
     await waitFor(() => expect(state().loading).toBe(false));
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'out' }));
+    expect(mocks.disablePush).toHaveBeenCalledExactlyOnceWith('u1');
     expect(mocks.signOut).toHaveBeenCalledWith({ name: 'test-auth' });
+    expect(mocks.disablePush.mock.invocationCallOrder[0]).toBeLessThan(mocks.signOut.mock.invocationCallOrder[0]!);
+  });
+
+  test('a failing push cleanup never blocks logout', async () => {
+    mocks.disablePush.mockRejectedValue(new Error('offline'));
+    signInAs(fakeUser({ role: 'store', country: 'CZ', storeId: '850' }));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(state().loading).toBe(false));
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'out' }));
+    await waitFor(() => expect(mocks.signOut).toHaveBeenCalledWith({ name: 'test-auth' }));
+  });
+
+  test('a push cleanup that never finishes (offline, the write is never confirmed) is not waited for', async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.disablePush.mockReturnValue(new Promise(() => {}));
+      signInAs(fakeUser({ role: 'store', country: 'CZ', storeId: '850' }));
+      render(<AuthProvider><Probe /></AuthProvider>);
+      await act(() => vi.advanceTimersByTimeAsync(0));
+
+      act(() => { screen.getByRole('button', { name: 'out' }).click(); });
+      await act(() => vi.advanceTimersByTimeAsync(2500));
+      expect(mocks.signOut).not.toHaveBeenCalled();
+
+      await act(() => vi.advanceTimersByTimeAsync(1000));
+      expect(mocks.signOut).toHaveBeenCalledWith({ name: 'test-auth' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

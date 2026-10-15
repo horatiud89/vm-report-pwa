@@ -46,6 +46,7 @@ export const cs: Dict = {
 
   'common.deadline': 'Termín {date}',
   'common.retry': 'Zkusit znovu',
+  'common.open': 'Otevřít',
 
   'push.enable': 'Zapnout oznámení',
   'push.enabled': 'Oznámení jsou zapnutá',

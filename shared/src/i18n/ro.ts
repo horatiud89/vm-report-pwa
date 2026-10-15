@@ -47,6 +47,7 @@ export const ro: Dict = {
 
   'common.deadline': 'Termen {date}',
   'common.retry': 'Încearcă din nou',
+  'common.open': 'Deschide',
 
   'push.enable': 'Activează notificările',
   'push.enabled': 'Notificările sunt activate',
