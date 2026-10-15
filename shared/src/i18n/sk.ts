@@ -55,6 +55,7 @@ export const sk: Dict = {
   'review.storeComment': 'Komentár predajne',
   'review.country': 'Krajina',
   'review.noReports': 'Zatiaľ tu nie sú žiadne reporty na kontrolu.',
+  'overview.empty': 'Zatiaľ nebol odoslaný žiadny report.',
   'review.feedbackSent': 'Spätná väzba bola odoslaná.',
   'review.statusOpen': 'Otvorená',
   'review.statusAnswered': 'Vybavená',

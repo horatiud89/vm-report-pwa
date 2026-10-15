@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 import { NavLink, Link, Outlet, useNavigate } from 'react-router-dom';
+import { isReviewer } from '@shared/access';
 import { useSession } from '../auth/AuthProvider';
 import { useT } from '../i18n/I18nProvider';
 import { InstallButton, InstallGuide, useInstallPrompt } from '../push/InstallGuide';
@@ -15,7 +16,7 @@ export const APP_TITLE = 'VM Photo Report';
 /** Header with the main navigation, the device banner, then the routed screen. Used by every signed-in route. */
 export function Layout() {
   const { t } = useT();
-  const { user } = useSession();
+  const { user, claims } = useSession();
   return (
     <>
       <header className="app-header">
@@ -23,6 +24,7 @@ export function Layout() {
           <Link to="/" className="app-title">{APP_TITLE}</Link>
           <nav aria-label={APP_TITLE} className="app-nav">
             <NavLink to="/" end>{t('nav.home')}</NavLink>
+            {claims && isReviewer(claims.role) && <NavLink to="/overview">{t('nav.overview')}</NavLink>}
             <NavLink to="/settings">{t('nav.settings')}</NavLink>
           </nav>
         </div>

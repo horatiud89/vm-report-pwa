@@ -460,6 +460,76 @@ h2 {
   line-height: 1.5;
 }
 
+/* Overview: a card per store, with counters and a grid of zone squares (colours from badgeStyle.ts) */
+.overview-card {
+  padding-bottom: 12px;
+}
+
+.overview-link {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.counters > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.counter-value {
+  font-weight: 700;
+}
+
+.counter-swatch,
+.zone-square {
+  display: inline-block;
+  flex: 0 0 auto;
+  border: 1px solid;
+  border-radius: 3px;
+}
+
+.counter-swatch {
+  width: 12px;
+  height: 12px;
+}
+
+.zone-departments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zone-department-name {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.zone-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.zone-square {
+  width: 24px;
+  height: 24px;
+}
+
 /* Primary action pinned to the bottom of the screen (New report, Send) */
 .action-bar {
   position: sticky;

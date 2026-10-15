@@ -54,6 +54,7 @@ export const en = {
   'review.storeComment': 'Store comment',
   'review.country': 'Country',
   'review.noReports': 'No reports to review yet.',
+  'overview.empty': 'No reports have been sent yet.',
   'review.feedbackSent': 'Feedback sent.',
   'review.statusOpen': 'Open',
   'review.statusAnswered': 'Answered',

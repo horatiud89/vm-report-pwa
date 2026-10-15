@@ -56,6 +56,7 @@ export const ro: Dict = {
   'review.storeComment': 'Comentariul magazinului',
   'review.country': 'Țara',
   'review.noReports': 'Încă nu sunt rapoarte de verificat.',
+  'overview.empty': 'Încă nu a fost trimis niciun raport.',
   'review.feedbackSent': 'Feedbackul a fost trimis.',
   'review.statusOpen': 'Deschis',
   'review.statusAnswered': 'Rezolvat',

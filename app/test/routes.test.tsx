@@ -202,6 +202,25 @@ describe('reviewer routes', () => {
   });
 });
 
+describe('overview route', () => {
+  test.each(['avm', 'am', 'head_vm', 'director'] as const)('/overview shows the overview for %s: the store card and its zone squares', (role) => {
+    renderApp(<AppRoutes />, { session: signedIn(role, 'en', { country: 'CZ' }), route: '/overview' });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(en['nav.overview']);
+    expect(screen.getByRole('link', { name: /850 Palladium Praha/ })).toHaveAttribute('href', '/r/r1');
+  });
+
+  test('a store user is sent home from /overview', () => {
+    renderApp(<AppRoutes />, { session: signedIn('store'), route: '/overview' });
+    expect(screen.queryByRole('heading', { name: en['nav.overview'], level: 1 })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: en['store.newReport'] })).toBeInTheDocument();
+  });
+
+  test('signed-out users are sent from /overview to the login page', () => {
+    renderApp(<AppRoutes />, { session: signedOut, route: '/overview' });
+    expect(loginHeading()).toBeInTheDocument();
+  });
+});
+
 describe('settings', () => {
   test('lists the four languages by their own names and logs out', async () => {
     const session = signedIn('store');

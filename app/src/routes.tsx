@@ -1,10 +1,12 @@
 import type { ReactElement } from 'react';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { isReviewer } from '@shared/access';
 import { useSession } from './auth/AuthProvider';
 import { LoginPage } from './auth/LoginPage';
 import { ResetPage } from './auth/ResetPage';
 import { useReport } from './data/hooks';
 import { useT } from './i18n/I18nProvider';
+import { OverviewPage } from './review/OverviewPage';
 import { ReviewHome } from './review/ReviewHome';
 import { ReviewReportPage } from './review/ReviewReportPage';
 import { ReviewZonePage } from './review/ReviewZonePage';
@@ -63,6 +65,12 @@ function StoreOnly({ children }: { children: ReactElement }) {
   return claims?.role === 'store' ? children : <Navigate to="/" replace />;
 }
 
+/** The overview of all stores is for reviewers; a store user is sent home. */
+function ReviewerOnly({ children }: { children: ReactElement }) {
+  const { claims } = useSession();
+  return claims && isReviewer(claims.role) ? children : <Navigate to="/" replace />;
+}
+
 /** The store's own screen for a path, or the reviewer's: the same addresses serve both. */
 function ByRole({ store, reviewer }: { store: ReactElement; reviewer: ReactElement }) {
   const { claims } = useSession();
@@ -93,6 +101,7 @@ export function AppRoutes() {
         <Route path="/new" element={<StoreOnly><NewReportPage /></StoreOnly>} />
         <Route path="/r/:reportId" element={<ByRole store={<DraftReportPage />} reviewer={<ReviewReportPage />} />} />
         <Route path="/r/:reportId/z/:zoneId" element={<ByRole store={<StoreZoneRoute />} reviewer={<ReviewZonePage />} />} />
+        <Route path="/overview" element={<ReviewerOnly><OverviewPage /></ReviewerOnly>} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

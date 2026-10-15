@@ -55,6 +55,7 @@ export const cs: Dict = {
   'review.storeComment': 'Komentář prodejny',
   'review.country': 'Země',
   'review.noReports': 'Zatím tu nejsou žádné reporty ke kontrole.',
+  'overview.empty': 'Zatím nebyl odeslán žádný report.',
   'review.feedbackSent': 'Zpětná vazba byla odeslána.',
   'review.statusOpen': 'Otevřená',
   'review.statusAnswered': 'Vyřízená',

@@ -1,8 +1,9 @@
-import { act, cleanup, screen } from '@testing-library/react';
+import { act, cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { en } from '@shared/i18n/en';
+import type { Role } from '@shared/types';
 import type { ForegroundMessage } from '../src/push/push';
 import { Layout } from '../src/ui/Layout';
 import { renderApp, signedIn } from './helpers';
@@ -30,14 +31,14 @@ function Where() {
   return <p data-testid="where">{useLocation().pathname}</p>;
 }
 
-function renderLayout() {
+function renderLayout(role: Role = 'store') {
   return renderApp(
     <Routes>
       <Route element={<Layout />}>
         <Route path="*" element={<Where />} />
       </Route>
     </Routes>,
-    { session: signedIn('store'), route: '/' },
+    { session: signedIn(role), route: '/' },
   );
 }
 
@@ -65,6 +66,22 @@ afterEach(() => {
   window.dispatchEvent(new Event('appinstalled'));
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+describe('Layout navigation', () => {
+  const nav = () => within(screen.getByRole('navigation')).getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')]);
+
+  test.each(['avm', 'am', 'head_vm', 'director'] as const)('%s sees Reports, Overview and Settings', (role) => {
+    onDevice(ANDROID_CHROME, { permission: 'denied' });
+    renderLayout(role);
+    expect(nav()).toEqual([[en['nav.home'], '/'], [en['nav.overview'], '/overview'], [en['nav.settings'], '/settings']]);
+  });
+
+  test('a store user has no Overview', () => {
+    onDevice(ANDROID_CHROME, { permission: 'denied' });
+    renderLayout('store');
+    expect(nav()).toEqual([[en['nav.home'], '/'], [en['nav.settings'], '/settings']]);
+  });
 });
 
 describe('Layout banner', () => {
