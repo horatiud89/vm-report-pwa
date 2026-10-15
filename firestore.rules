@@ -1,0 +1,70 @@
+rules_version = '2';
+
+// Visibility mirrors shared/src/access.ts. Custom claims on the ID token: role, country, storeId.
+// Clients never write reports, zones or feedback: every state change goes through a Cloud Function
+// (admin SDK, which bypasses these rules).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function claim(name) {
+      return request.auth.token.get(name, null);
+    }
+
+    function isStoreUser() {
+      return signedIn() && claim('role') == 'store' && claim('storeId') != null;
+    }
+
+    // head_vm and director see every country, avm and am only their own, a store user never a whole country.
+    function canViewCountry(country) {
+      return signedIn() && (
+        claim('role') in ['head_vm', 'director'] ||
+        (claim('role') in ['avm', 'am'] && claim('country') != null && claim('country') == country)
+      );
+    }
+
+    function canViewStore(storeId, country) {
+      return (isStoreUser() && claim('storeId') == storeId) || canViewCountry(country);
+    }
+
+    // A store sees all of its own reports (draft or sent); reviewers only see sent reports of their countries.
+    function canReadReport(report) {
+      return (isStoreUser() && report.storeId == claim('storeId'))
+        || (report.status == 'sent' && canViewCountry(report.country));
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, delete: if false;
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['language', 'fcmTokens'])
+        && request.resource.data.language in ['en', 'cs', 'sk', 'ro']
+        && request.resource.data.fcmTokens is list
+        && request.resource.data.fcmTokens.size() <= 10;
+    }
+
+    match /stores/{storeId} {
+      allow read: if canViewStore(storeId, resource.data.country);
+      allow write: if false;
+    }
+
+    match /reports/{reportId} {
+      allow read: if canReadReport(resource.data);
+      allow write: if false;
+
+      match /zones/{zoneId} {
+        allow read: if canReadReport(get(/databases/$(database)/documents/reports/$(reportId)).data);
+        allow write: if false;
+
+        match /feedback/{feedbackId} {
+          allow read: if canReadReport(get(/databases/$(database)/documents/reports/$(reportId)).data);
+          allow write: if false;
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// Same visibility as firestore.rules (mirrors shared/src/access.ts). Stores may only create new JPEG files
+// in their own path; an overwrite is an update and a delete is a delete, both denied. Reviewers read only.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function claim(name) {
+      return request.auth.token.get(name, null);
+    }
+
+    function ownsStore(storeId) {
+      return signedIn() && claim('role') == 'store' && claim('storeId') != null && claim('storeId') == storeId;
+    }
+
+    function canViewCountry(country) {
+      return signedIn() && (
+        claim('role') in ['head_vm', 'director'] ||
+        (claim('role') in ['avm', 'am'] && claim('country') != null && claim('country') == country)
+      );
+    }
+
+    match /reports/{country}/{storeId}/{reportId}/{zoneId}/{file} {
+      allow read: if ownsStore(storeId) || canViewCountry(country);
+
+      // resource == null: belt and braces, an upload to an existing path must never count as a create.
+      allow create: if resource == null
+        && ownsStore(storeId)
+        && claim('country') == country
+        && request.resource.contentType == 'image/jpeg'
+        && request.resource.size < 5 * 1024 * 1024;
+
+      allow update, delete: if false;
+    }
+  }
+}
