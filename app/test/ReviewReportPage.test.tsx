@@ -55,7 +55,7 @@ beforeEach(() => {
   hooks.useStore.mockReset();
   vi.mocked(api.markSeen).mockReset().mockResolvedValue(undefined);
   vi.mocked(api.approveAllWithoutFeedback).mockReset().mockResolvedValue({ approved: 3 });
-  vi.mocked(exportReport).mockReset().mockResolvedValue(undefined);
+  vi.mocked(exportReport).mockReset().mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -229,7 +229,7 @@ describe('ReviewReportPage: export PDF', () => {
 
   test('is disabled and says it is preparing while the PDF is made, and a second tap does nothing', async () => {
     let finish: () => void = () => undefined;
-    vi.mocked(exportReport).mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
+    vi.mocked(exportReport).mockReturnValue(new Promise((resolve) => { finish = () => resolve(null); }));
     const user = userEvent.setup({ advanceTimers: () => undefined });
     renderPage();
 
@@ -272,9 +272,32 @@ describe('ReviewReportPage: export PDF', () => {
     expect(exportReport).not.toHaveBeenCalled();
   });
 
+  test('a PDF the phone will only share from a new tap: a toast says it is ready, and Share PDF shares it', async () => {
+    const shareLater = vi.fn(async () => undefined);
+    vi.mocked(exportReport).mockResolvedValue(shareLater);
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderPage();
+
+    await user.click(exportPdf()!);
+    expect(await screen.findByText(en['pdf.ready'])).toBeInTheDocument();
+    expect(shareLater).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: en['pdf.share'] }));
+    expect(shareLater).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(en['pdf.ready'])).not.toBeInTheDocument();
+  });
+
+  test('a PDF shared or downloaded at once needs no toast', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderPage();
+    await user.click(exportPdf()!);
+    await waitFor(() => expect(exportPdf()).toBeEnabled());
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
   test('exporting does not block Approve all without feedback', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    vi.mocked(exportReport).mockReturnValue(new Promise<void>(() => undefined));
+    vi.mocked(exportReport).mockReturnValue(new Promise(() => undefined));
     const user = userEvent.setup({ advanceTimers: () => undefined });
     renderPage();
 

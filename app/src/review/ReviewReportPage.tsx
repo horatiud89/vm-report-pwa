@@ -66,7 +66,9 @@ export function ReviewReportPage() {
     exportStarted.current = true;
     setExporting(true);
     try {
-      await exportReport(current, zones.data, lang, store.data);
+      const shareLater = await exportReport(current, zones.data, lang, store.data);
+      // The phone wants a fresh tap to open its share sheet: this one.
+      if (shareLater) toast(t('pdf.ready'), { label: t('pdf.share'), onClick: () => void shareLater() });
     } catch {
       toast(t('error.generic'));
     } finally {

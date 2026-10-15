@@ -352,13 +352,69 @@ describe('exportReport: delivery', () => {
 
   test('the reviewer closing the share sheet is not an error and downloads nothing', async () => {
     setSharing(vi.fn(async () => { throw new DOMException('Share canceled', 'AbortError'); }), true);
-    await expect(exportReport(report(), zonesOf(), 'en')).resolves.toBeUndefined();
+    await expect(exportReport(report(), zonesOf(), 'en')).resolves.toBeNull();
     expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 
-  test('a share the browser refuses (for instance because the tap was too long ago) falls back to a download', async () => {
-    setSharing(vi.fn(async () => { throw new DOMException('Must be handling a user gesture', 'NotAllowedError'); }), true);
-    await expect(exportReport(report(), zonesOf(), 'en')).resolves.toBeUndefined();
+  test('shared or downloaded at once, nothing is left to do', async () => {
+    setSharing(vi.fn(async (_data: ShareData) => undefined), true);
+    await expect(exportReport(report(), zonesOf(), 'en')).resolves.toBeNull();
+    setSharing(undefined, false);
+    await expect(exportReport(report(), zonesOf(), 'en')).resolves.toBeNull();
+  });
+
+  test('a share refused because the tap is too long ago (iPhone) is handed back for a new tap: it shares the same file, nothing is downloaded', async () => {
+    const share = vi.fn(async (_data: ShareData) => undefined)
+      .mockRejectedValueOnce(new DOMException('The request is not allowed by the user agent', 'NotAllowedError'));
+    setSharing(share, true);
+
+    const shareLater = await exportReport(report(), zonesOf(), 'en');
+    expect(shareLater).toBeTypeOf('function');
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+
+    await shareLater!();
+    expect(share).toHaveBeenCalledTimes(2);
+    const [first, second] = share.mock.calls.map(([data]) => data.files?.[0]);
+    expect(second).toBe(first);
+    expect(second?.name).toBe('VM-Report-850-Autumn-2026.pdf');
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  test('without the tap’s activation left it does not try at all, and hands the share back', async () => {
+    const share = vi.fn(async (_data: ShareData) => undefined);
+    setSharing(share, true);
+    Object.defineProperty(navigator, 'userActivation', { value: { isActive: false, hasBeenActive: true }, configurable: true });
+    try {
+      const shareLater = await exportReport(report(), zonesOf(), 'en');
+      expect(share).not.toHaveBeenCalled();
+      await shareLater!();
+      expect(share).toHaveBeenCalledTimes(1);
+    } finally {
+      Reflect.deleteProperty(navigator, 'userActivation');
+    }
+  });
+
+  test('the handed-back share: closing the sheet is fine, any other failure still gets the file to the reviewer as a download', async () => {
+    const refused = () => new DOMException('not allowed', 'NotAllowedError');
+    const share = vi.fn(async (_data: ShareData) => undefined)
+      .mockRejectedValueOnce(refused())
+      .mockRejectedValueOnce(new DOMException('Share canceled', 'AbortError'))
+      .mockRejectedValueOnce(refused())
+      .mockRejectedValueOnce(refused());
+    setSharing(share, true);
+
+    const closed = await exportReport(report(), zonesOf(), 'en');
+    await expect(closed!()).resolves.toBeUndefined();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+
+    const failed = await exportReport(report(), zonesOf(), 'en');
+    await expect(failed!()).resolves.toBeUndefined();
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
+  });
+
+  test('a share that fails for another reason downloads the file instead', async () => {
+    setSharing(vi.fn(async () => { throw new TypeError('bad data'); }), true);
+    await expect(exportReport(report(), zonesOf(), 'en')).resolves.toBeNull();
     expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
   });
 

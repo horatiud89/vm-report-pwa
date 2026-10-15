@@ -70,6 +70,8 @@ export const cs: Dict = {
   'pdf.photoUnavailable': 'Fotku {n} se nepodařilo načíst',
   'pdf.preparing': 'Připravuji PDF…',
   'pdf.version': 'Verze {n}',
+  'pdf.ready': 'PDF je připravené.',
+  'pdf.share': 'Sdílet PDF',
 
   'common.deadline': 'Termín {date}',
   'common.retry': 'Zkusit znovu',

@@ -69,6 +69,8 @@ export const en = {
   'pdf.photoUnavailable': 'Photo {n} could not be loaded',
   'pdf.preparing': 'Preparing PDF…',
   'pdf.version': 'Version {n}',
+  'pdf.ready': 'The PDF is ready.',
+  'pdf.share': 'Share PDF',
 
   'common.deadline': 'Deadline {date}',
   'common.retry': 'Try again',

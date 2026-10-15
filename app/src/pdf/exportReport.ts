@@ -104,22 +104,39 @@ function download(file: File): void {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+/** A PDF that is ready, to be shared from a new tap of the reviewer (see deliver). Never rejects. */
+export type ShareLater = () => Promise<void>;
+
+const errorName = (error: unknown) => (error as { name?: string } | null)?.name;
+
 /**
  * The share sheet (on iPhone: save to Files, AirDrop, Mail…) when the browser can share files, else a download.
- * The reviewer closing the sheet is not an error. A share the browser refuses, as when the tap that started the
- * export is too long ago for it, ends in a download instead.
+ * The reviewer closing the sheet is not an error. WebKit shares only within moments of a tap and making the PDF
+ * takes longer, so a share refused for that (NotAllowedError, or no activation left) is handed back as ShareLater,
+ * to be called from a new tap. A share that fails for any other reason ends in a download.
  */
-async function deliver(blob: Blob, fileName: string, title: string): Promise<void> {
+async function deliver(blob: Blob, fileName: string, title: string): Promise<ShareLater | null> {
   const file = new File([blob], fileName, { type: 'application/pdf' });
-  if (navigator.canShare?.({ files: [file] })) {
+  if (!navigator.canShare?.({ files: [file] })) {
+    download(file);
+    return null;
+  }
+  const shareLater: ShareLater = async () => {
     try {
       await navigator.share({ files: [file], title });
-      return;
     } catch (error) {
-      if ((error as { name?: string } | null)?.name === 'AbortError') return;
+      if (errorName(error) !== 'AbortError') download(file);
     }
+  };
+  // Not in every browser's DOM; where it is missing, the share itself says whether it was allowed.
+  if ((navigator.userActivation as UserActivation | undefined)?.isActive === false) return shareLater;
+  try {
+    await navigator.share({ files: [file], title });
+  } catch (error) {
+    if (errorName(error) === 'NotAllowedError') return shareLater;
+    if (errorName(error) !== 'AbortError') download(file);
   }
-  download(file);
+  return null;
 }
 
 /**
@@ -127,10 +144,16 @@ async function deliver(blob: Blob, fileName: string, title: string): Promise<voi
  * first), fetches the current photos and draws on each the circles of the feedback given on this version (circles
  * of an older version belong to photos that are no longer current), then builds the document and shares or downloads
  * it. A photo that cannot be loaded is named in the PDF and does not stop it; anything else that fails (feedback,
- * font, the PDF itself) rejects, so the caller can say so.
+ * font, the PDF itself) rejects, so the caller can say so. Resolves with a ShareLater when the browser wants a new
+ * tap before it shares the PDF, else with null.
  * `store` only gives the department names; without it a department is shown by its id.
  */
-export async function exportReport(report: ReportDoc, zones: ZoneDoc[], lang: Lang, store: StoreDef | null = null): Promise<void> {
+export async function exportReport(
+  report: ReportDoc,
+  zones: ZoneDoc[],
+  lang: Lang,
+  store: StoreDef | null = null,
+): Promise<ShareLater | null> {
   const exportedAt = Date.now();
   const ordered = [...zones].sort((a, b) => a.order - b.order);
   // A zone that is not in the campaign has no photos to show; the others show their current version.
@@ -194,5 +217,5 @@ export async function exportReport(report: ReportDoc, zones: ZoneDoc[], lang: La
   };
 
   const doc = buildModule.buildReportPdf(pdfReport, lang, fontBase64);
-  await deliver(doc.output('blob'), pdfFileName(report.storeCode, report.campaignName), `VM Photo Report ${report.storeCode} – ${report.campaignName}`);
+  return deliver(doc.output('blob'), pdfFileName(report.storeCode, report.campaignName), `VM Photo Report ${report.storeCode} – ${report.campaignName}`);
 }
