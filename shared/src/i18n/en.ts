@@ -28,6 +28,14 @@ export const en = {
   'store.sendHint': 'Every zone needs a photo or the “Not part of this campaign” mark.',
   'store.sendCorrection': 'Send correction',
   'store.draftExists': 'You already have a draft report.',
+  'store.startReport': 'Start report',
+  'store.noReports': 'No reports yet.',
+  'store.photo': 'Photo {n}',
+  'store.removePhoto': 'Remove photo',
+  'store.uploading': 'Uploading… {n}%',
+  'store.saving': 'Saving…',
+  'store.saved': 'Saved',
+  'store.sent': 'Report sent.',
 
   'review.new': 'New',
   'review.allCountries': 'All countries',
@@ -46,6 +54,7 @@ export const en = {
   'common.deadline': 'Deadline {date}',
   'common.retry': 'Try again',
   'common.open': 'Open',
+  'common.back': 'Back',
 
   'push.enable': 'Turn on notifications',
   'push.enabled': 'Notifications are on',

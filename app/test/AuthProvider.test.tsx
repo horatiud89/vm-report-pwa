@@ -24,6 +24,11 @@ vi.mock('firebase/auth', () => ({
 }));
 vi.mock('firebase/firestore', () => ({ doc: mocks.doc, onSnapshot: mocks.onSnapshot, updateDoc: vi.fn() }));
 vi.mock('../src/firebase', () => ({ auth: { name: 'test-auth' }, db: { name: 'test-db' } }));
+vi.mock('../src/api', () => ({ createDraft: vi.fn(), updateDraftZone: vi.fn(), sendReport: vi.fn() }));
+vi.mock('../src/data/hooks', () => ({
+  useStoreReports: () => ({ data: [], loading: false, error: null }),
+  useStore: () => ({ data: null, loading: false, error: null }),
+}));
 vi.mock('../src/push/push', () => ({ disablePush: mocks.disablePush, enablePush: vi.fn(), refreshPush: vi.fn(), onForegroundMessage: vi.fn() }));
 
 const PROFILE = { email: 'a@example.com', role: 'store', country: 'CZ', storeId: '850', displayName: 'A', language: 'cs', fcmTokens: [] };
@@ -229,7 +234,7 @@ describe('AuthProvider', () => {
 });
 
 describe('the app with an unreadable token', () => {
-  test('shows the generic error and Try again (not "no access"); Try again then opens the signed-in shell', async () => {
+  test('shows the generic error and Try again (not "no access"); Try again then opens the store home', async () => {
     const user = fakeUser({ role: 'store', country: 'CZ', storeId: '850' });
     user.getIdTokenResult.mockRejectedValueOnce(new Error('network-request-failed'));
     signInAs(user, { ...PROFILE, language: 'en' });
@@ -248,8 +253,7 @@ describe('the app with an unreadable token', () => {
 
     await userEvent.setup().click(screen.getByRole('button', { name: en['common.retry'] }));
 
-    expect(await screen.findByRole('heading', { name: 'VM Photo Report' })).toBeInTheDocument();
-    expect(screen.getByText('Store · 850')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: en['store.newReport'] })).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

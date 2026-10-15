@@ -30,6 +30,14 @@ export const ro: Dict = {
   'store.sendHint': 'Fiecare zonă trebuie să aibă o poză sau marcajul „Nu face parte din campanie”.',
   'store.sendCorrection': 'Trimite corectura',
   'store.draftExists': 'Ai deja o ciornă deschisă.',
+  'store.startReport': 'Începe raportul',
+  'store.noReports': 'Încă nu ai niciun raport.',
+  'store.photo': 'Poza {n}',
+  'store.removePhoto': 'Șterge poza',
+  'store.uploading': 'Se încarcă… {n}%',
+  'store.saving': 'Se salvează…',
+  'store.saved': 'Salvat',
+  'store.sent': 'Raportul a fost trimis.',
 
   'review.new': 'Nou',
   'review.allCountries': 'Toate țările',
@@ -48,6 +56,7 @@ export const ro: Dict = {
   'common.deadline': 'Termen {date}',
   'common.retry': 'Încearcă din nou',
   'common.open': 'Deschide',
+  'common.back': 'Înapoi',
 
   'push.enable': 'Activează notificările',
   'push.enabled': 'Notificările sunt activate',

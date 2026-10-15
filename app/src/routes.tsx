@@ -1,9 +1,14 @@
+import type { ReactElement } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROLE_LABEL } from '@shared/access';
 import { useSession } from './auth/AuthProvider';
 import { LoginPage } from './auth/LoginPage';
 import { ResetPage } from './auth/ResetPage';
 import { useT } from './i18n/I18nProvider';
+import { DraftReportPage } from './store/DraftReportPage';
+import { DraftZonePage } from './store/DraftZonePage';
+import { NewReportPage } from './store/NewReportPage';
+import { StoreHome } from './store/StoreHome';
 import { APP_TITLE, Layout } from './ui/Layout';
 import { Loading } from './ui/Loading';
 import { SettingsPage } from './ui/SettingsPage';
@@ -48,7 +53,7 @@ function LoginRoute() {
   return user ? <Navigate to="/" replace /> : <LoginPage />;
 }
 
-/** Placeholder until the store and reviewer home screens replace it. */
+/** Placeholder until the reviewer home screen replaces it (Task 14). */
 function HomeShell() {
   const { claims } = useSession();
   if (!claims) return null;
@@ -60,13 +65,27 @@ function HomeShell() {
   );
 }
 
+/** The store's own reports, drafts and zones; reviewers have screens of their own and are sent home. */
+function StoreOnly({ children }: { children: ReactElement }) {
+  const { claims } = useSession();
+  return claims?.role === 'store' ? children : <Navigate to="/" replace />;
+}
+
+function HomeRoute() {
+  const { claims } = useSession();
+  return claims?.role === 'store' ? <StoreHome /> : <HomeShell />;
+}
+
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
       <Route path="/reset" element={<ResetPage />} />
       <Route element={<RequireAccess />}>
-        <Route path="/" element={<HomeShell />} />
+        <Route path="/" element={<HomeRoute />} />
+        <Route path="/new" element={<StoreOnly><NewReportPage /></StoreOnly>} />
+        <Route path="/r/:reportId" element={<StoreOnly><DraftReportPage /></StoreOnly>} />
+        <Route path="/r/:reportId/z/:zoneId" element={<StoreOnly><DraftZonePage /></StoreOnly>} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -29,6 +29,14 @@ export const cs: Dict = {
   'store.sendHint': 'Každá zóna musí mít fotku nebo označení „Není součástí kampaně“.',
   'store.sendCorrection': 'Odeslat opravu',
   'store.draftExists': 'Už máte rozpracovaný report.',
+  'store.startReport': 'Založit report',
+  'store.noReports': 'Zatím nemáte žádné reporty.',
+  'store.photo': 'Fotka {n}',
+  'store.removePhoto': 'Odstranit fotku',
+  'store.uploading': 'Nahrávání… {n} %',
+  'store.saving': 'Ukládání…',
+  'store.saved': 'Uloženo',
+  'store.sent': 'Report byl odeslán.',
 
   'review.new': 'Nový',
   'review.allCountries': 'Všechny země',
@@ -47,6 +55,7 @@ export const cs: Dict = {
   'common.deadline': 'Termín {date}',
   'common.retry': 'Zkusit znovu',
   'common.open': 'Otevřít',
+  'common.back': 'Zpět',
 
   'push.enable': 'Zapnout oznámení',
   'push.enabled': 'Oznámení jsou zapnutá',
