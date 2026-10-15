@@ -31,6 +31,11 @@ export default defineConfig({
     alias: { '@shared': fileURLToPath(new URL('../shared/src', import.meta.url)) },
   },
   server: { fs: { allow: ['..'] } },
-  // The Firebase SDK alone is about 800 kB; one cached chunk is fine for this app.
-  build: { chunkSizeWarningLimit: 1000 },
+  build: {
+    // The Firebase SDK alone is about 800 kB; one cached chunk is fine for this app.
+    chunkSizeWarningLimit: 1000,
+    // jsPDF loads these only for html() and SVG images, which the PDF export never uses; bundled, they would add
+    // three chunks (about 380 kB) that the service worker downloads for every user.
+    rollupOptions: { external: ['html2canvas', 'dompurify', 'canvg'] },
+  },
 });

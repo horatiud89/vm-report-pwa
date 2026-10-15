@@ -63,6 +63,11 @@ export const en = {
   'review.approvedCount': 'Zones approved: {n}',
   'review.beforeAfter': 'Before and after',
 
+  'pdf.campaign': 'Campaign',
+  'pdf.exported': 'Exported',
+  'pdf.photoUnavailable': 'Photo {n} could not be loaded',
+  'pdf.preparing': 'Preparing PDF…',
+
   'common.deadline': 'Deadline {date}',
   'common.retry': 'Try again',
   'common.open': 'Open',

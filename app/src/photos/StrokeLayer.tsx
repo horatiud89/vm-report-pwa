@@ -1,8 +1,5 @@
 import type { Stroke } from '@shared/types';
-import { strokesToPolylinePoints } from '../review/strokes';
-
-/** Red of the reviewer's circles. */
-const STROKE_COLOR = '#d32f2f';
+import { STROKE_COLOR, strokesToPolylinePoints } from '../review/strokes';
 
 /**
  * The reviewer's strokes as an svg that covers exactly the photo below it. Stroke points are fractions of the

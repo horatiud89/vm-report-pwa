@@ -65,6 +65,11 @@ export const ro: Dict = {
   'review.approvedCount': 'Zone aprobate: {n}',
   'review.beforeAfter': 'Înainte și după',
 
+  'pdf.campaign': 'Campanie',
+  'pdf.exported': 'Exportat',
+  'pdf.photoUnavailable': 'Poza {n} nu a putut fi încărcată',
+  'pdf.preparing': 'Se pregătește PDF-ul…',
+
   'common.deadline': 'Termen {date}',
   'common.retry': 'Încearcă din nou',
   'common.open': 'Deschide',

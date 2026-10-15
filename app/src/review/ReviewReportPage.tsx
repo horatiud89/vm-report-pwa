@@ -4,12 +4,13 @@ import { approveAllWithoutFeedback, markSeen } from '../api';
 import { useReport, useStore, useZones } from '../data/hooks';
 import { formatDate } from '../i18n/formatDate';
 import { useT } from '../i18n/I18nProvider';
+import { exportReport } from '../pdf/exportReport';
 import { reportStatusLabel } from '../store/reportStatusLabel';
 import { DepartmentZones } from '../ui/DepartmentZones';
 import { Loading } from '../ui/Loading';
 import { useToast } from '../ui/Toast';
 
-/** A sent report as the reviewer sees it: the zones by department with their status, and Approve all without feedback. */
+/** A sent report as the reviewer sees it: the zones by department with their status, Export PDF and Approve all without feedback. */
 export function ReviewReportPage() {
   const { reportId = '' } = useParams();
   const { t, lang } = useT();
@@ -19,6 +20,8 @@ export function ReviewReportPage() {
   const store = useStore(report.data?.storeId ?? '');
   const [approving, setApproving] = useState(false);
   const approveStarted = useRef(false);
+  const [exporting, setExporting] = useState(false);
+  const exportStarted = useRef(false);
 
   // Opening the report is what takes the New mark away. It is told once per open (also under React's double
   // effect in development); a failure only means the mark stays, so it is ignored.
@@ -58,12 +61,31 @@ export function ReviewReportPage() {
     }
   }
 
+  async function exportPdf() {
+    if (exportStarted.current) return;
+    exportStarted.current = true;
+    setExporting(true);
+    try {
+      await exportReport(current, zones.data, lang, store.data);
+    } catch {
+      toast(t('error.generic'));
+    } finally {
+      exportStarted.current = false;
+      setExporting(false);
+    }
+  }
+
   return (
     <>
       <Link to="/" className="back-link">{t('common.back')}</Link>
       <h1>{current.storeCode} {current.storeName}</h1>
       <p className="muted">{current.campaignName} · {current.country} · {formatDate(lang, current.sentAt ?? current.createdAt, current.timezone)}</p>
       <p><span className="tag">{reportStatusLabel(t, current)}</span></p>
+      <p>
+        <button type="button" className="btn btn-small" disabled={exporting} onClick={() => void exportPdf()}>
+          {t(exporting ? 'pdf.preparing' : 'review.exportPdf')}
+        </button>
+      </p>
 
       <DepartmentZones report={current} zones={zones.data} store={store.data} />
 

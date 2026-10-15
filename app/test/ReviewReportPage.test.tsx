@@ -7,6 +7,7 @@ import { en } from '@shared/i18n/en';
 import { STORE_850 } from '@shared/store850';
 import type { ReportDoc, ZoneDoc } from '@shared/types';
 import * as api from '../src/api';
+import { exportReport } from '../src/pdf/exportReport';
 import { ReviewReportPage } from '../src/review/ReviewReportPage';
 import { allZoneDocs, live, makeReport, makeZone } from './fixtures';
 import { renderApp, signedIn } from './helpers';
@@ -14,6 +15,7 @@ import { renderApp, signedIn } from './helpers';
 const hooks = vi.hoisted(() => ({ useReport: vi.fn(), useZones: vi.fn(), useStore: vi.fn() }));
 vi.mock('../src/data/hooks', () => hooks);
 vi.mock('../src/api', () => ({ markSeen: vi.fn(), approveAllWithoutFeedback: vi.fn() }));
+vi.mock('../src/pdf/exportReport', () => ({ exportReport: vi.fn() }));
 vi.mock('firebase/firestore', () => ({ doc: vi.fn(), updateDoc: vi.fn() }));
 vi.mock('../src/firebase', () => ({ auth: {}, db: {} }));
 
@@ -43,6 +45,7 @@ function renderPage({ r = report(), zones = allZoneDocs('submitted') }: { r?: Re
 }
 
 const approveAll = () => screen.queryByRole('button', { name: en['review.approveAll'] });
+const exportPdf = () => screen.queryByRole('button', { name: en['review.exportPdf'] });
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -52,6 +55,7 @@ beforeEach(() => {
   hooks.useStore.mockReset();
   vi.mocked(api.markSeen).mockReset().mockResolvedValue(undefined);
   vi.mocked(api.approveAllWithoutFeedback).mockReset().mockResolvedValue({ approved: 3 });
+  vi.mocked(exportReport).mockReset().mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -88,11 +92,6 @@ describe('ReviewReportPage: the report', () => {
     renderPage({ zones });
     expect(within(screen.getByRole('link', { name: /Women's Image/ })).getByText(en['state.overdue'])).toBeInTheDocument();
     expect(within(screen.getByRole('link', { name: /Men's Image/ })).getByText(en['state.needs_correction'])).toBeInTheDocument();
-  });
-
-  test('has no Export PDF button yet', () => {
-    renderPage();
-    expect(screen.queryByRole('button', { name: en['review.exportPdf'] })).not.toBeInTheDocument();
   });
 
   test('a report that is not there sends the reviewer home', () => {
@@ -197,5 +196,79 @@ describe('ReviewReportPage: approve all without feedback', () => {
     expect(api.approveAllWithoutFeedback).toHaveBeenCalledTimes(1);
     finish({ approved: 1 });
     expect(await screen.findByText('Zones approved: 1')).toBeInTheDocument();
+  });
+});
+
+describe('ReviewReportPage: export PDF', () => {
+  test('is offered whatever the state of the zones, also when nothing waits for review', () => {
+    renderPage({ zones: allZoneDocs('approved') });
+    expect(approveAll()).not.toBeInTheDocument();
+    expect(exportPdf()).toBeEnabled();
+  });
+
+  test('makes the PDF of this report, with its zones, the language of the reviewer and the store', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    const zones = allZoneDocs('submitted', { 'women-image': 'approved' });
+    renderPage({ zones });
+
+    await user.click(exportPdf()!);
+    expect(exportReport).toHaveBeenCalledTimes(1);
+    expect(exportReport).toHaveBeenCalledWith(report(), zones, 'en', STORE_850);
+  });
+
+  test('hands over the language the reviewer uses', async () => {
+    hooks.useReport.mockReturnValue(live(report()));
+    hooks.useZones.mockReturnValue(live(allZoneDocs('submitted')));
+    hooks.useStore.mockReturnValue(live(STORE_850));
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderApp(<ReviewReportPage />, { session: signedIn('avm', 'ro', { country: 'CZ' }) });
+
+    await user.click(screen.getByRole('button', { name: 'Exportă PDF' }));
+    expect(vi.mocked(exportReport).mock.calls[0]?.[2]).toBe('ro');
+  });
+
+  test('is disabled and says it is preparing while the PDF is made, and a second tap does nothing', async () => {
+    let finish: () => void = () => undefined;
+    vi.mocked(exportReport).mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderPage();
+
+    await user.click(exportPdf()!);
+    expect(exportPdf()).not.toBeInTheDocument();
+    const busy = screen.getByRole('button', { name: en['pdf.preparing'] });
+    expect(busy).toBeDisabled();
+    await user.click(busy);
+    expect(exportReport).toHaveBeenCalledTimes(1);
+
+    finish();
+    await waitFor(() => expect(exportPdf()).toBeEnabled());
+    expect(screen.queryByText(en['error.generic'])).not.toBeInTheDocument();
+  });
+
+  test('a failed export shows the generic error, keeps the page usable and can be tried again', async () => {
+    vi.mocked(exportReport).mockRejectedValueOnce(new Error('storage/unauthorized'));
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderPage();
+
+    await user.click(exportPdf()!);
+    expect(await screen.findByText(en['error.generic'])).toBeInTheDocument();
+    expect(exportPdf()).toBeEnabled();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('850 Palladium Praha');
+    expect(approveAll()).toBeEnabled();
+
+    await user.click(exportPdf()!);
+    expect(exportReport).toHaveBeenCalledTimes(2);
+  });
+
+  test('exporting does not block Approve all without feedback', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.mocked(exportReport).mockReturnValue(new Promise<void>(() => undefined));
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderPage();
+
+    await user.click(exportPdf()!);
+    expect(approveAll()).toBeEnabled();
+    await user.click(approveAll()!);
+    expect(api.approveAllWithoutFeedback).toHaveBeenCalledTimes(1);
   });
 });

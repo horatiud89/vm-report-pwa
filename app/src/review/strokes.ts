@@ -1,5 +1,8 @@
 import type { Stroke } from '@shared/types';
 
+/** Red of the reviewer's circles, on screen and in the PDF. */
+export const STROKE_COLOR = '#d32f2f';
+
 /** What the server accepts in one piece of feedback (functions/src/review.ts). */
 export const MAX_STROKES = 50;
 export const MAX_STROKE_VALUES = 2000;

@@ -64,6 +64,11 @@ export const sk: Dict = {
   'review.approvedCount': 'Schválených zón: {n}',
   'review.beforeAfter': 'Pred a po',
 
+  'pdf.campaign': 'Kampaň',
+  'pdf.exported': 'Exportované',
+  'pdf.photoUnavailable': 'Fotku {n} sa nepodarilo načítať',
+  'pdf.preparing': 'Pripravujem PDF…',
+
   'common.deadline': 'Termín {date}',
   'common.retry': 'Skúsiť znova',
   'common.open': 'Otvoriť',
