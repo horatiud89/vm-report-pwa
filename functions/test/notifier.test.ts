@@ -52,7 +52,7 @@ describe('buildMessage', () => {
 
   test('all_approved links to the report and counts the zones', () => {
     expect(buildMessage(allApproved, 'en', APP_URL)).toMatchObject({
-      body: 'Autumn 2026: 32 zones approved',
+      body: 'Autumn 2026: zones approved (32)',
       link: 'https://x.web.app/r/r1',
     });
   });

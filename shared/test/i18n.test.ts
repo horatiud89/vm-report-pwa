@@ -53,8 +53,15 @@ describe('t', () => {
   });
 
   test('replaces every placeholder, numbers included', () => {
-    expect(t('en', 'push.allApproved', { campaign: 'Autumn 2026', n: 12 })).toBe('Autumn 2026: 12 zones approved');
+    expect(t('en', 'push.allApproved', { campaign: 'Autumn 2026', n: 12 })).toBe('Autumn 2026: zones approved (12)');
     expect(t('en', 'store.addPhoto', { n: 2 })).toBe('Add photo (2/3)');
+  });
+
+  test('English counts read right for one as well as for many (no "1 zones")', () => {
+    expect(t('en', 'push.allApproved', { campaign: 'Autumn 2026', n: 1 })).toBe('Autumn 2026: zones approved (1)');
+    // Every {n} sits after a colon, in brackets or in "Photo/Version {n}", never before a plural noun.
+    const beforePlural = (Object.keys(en) as MsgKey[]).filter((key) => /\{n\} \w+s\b/.test(en[key]));
+    expect(beforePlural).toEqual([]);
   });
 
   test('inserts param values literally, even with $ patterns', () => {
@@ -86,6 +93,17 @@ describe('stateLabel', () => {
   test.each(LANGS)('%s: gives every status a different label', (lang) => {
     const labels = STATUSES.map((s) => stateLabel(lang, s));
     expect(new Set(labels).size).toBe(STATUSES.length);
+  });
+});
+
+describe('wording', () => {
+  test.each(LANGS)('%s: Undo on the drawing is not the same word as Back', (lang) => {
+    expect(t(lang, 'review.undo')).not.toBe(t(lang, 'common.back'));
+  });
+
+  test('an answered feedback reads as corrected (awaiting approval), not as resolved', () => {
+    expect({ cs: cs['review.statusAnswered'], sk: sk['review.statusAnswered'], ro: ro['review.statusAnswered'] })
+      .toEqual({ cs: 'Opraveno', sk: 'Opravené', ro: 'Corectat' });
   });
 });
 

@@ -59,7 +59,7 @@ export const ro: Dict = {
   'overview.empty': 'Încă nu a fost trimis niciun raport.',
   'review.feedbackSent': 'Feedbackul a fost trimis.',
   'review.statusOpen': 'Deschis',
-  'review.statusAnswered': 'Rezolvat',
+  'review.statusAnswered': 'Corectat',
   'review.drawHint': 'Desenează cu degetul cercuri pe poză.',
   'review.approveAllConfirm': 'Aprobi toate zonele trimise care nu au feedback ({n})?',
   'review.approvedCount': 'Zone aprobate: {n}',

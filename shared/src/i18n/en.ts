@@ -103,7 +103,7 @@ export const en = {
   'push.feedback': 'Feedback: {zone} — deadline {date}',
   'push.correctionSent': '{store} sent a correction: {zone}',
   'push.zoneApproved': 'Approved: {zone}',
-  'push.allApproved': '{campaign}: {n} zones approved',
+  'push.allApproved': '{campaign}: zones approved ({n})',
   'push.reminderDayBefore': 'Reminder: {zone} — deadline tomorrow ({date})',
   'push.reminderOverdue': 'Overdue: {zone} — deadline was {date}',
 } as const;
