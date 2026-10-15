@@ -2,25 +2,31 @@ import { cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
 import { en } from '@shared/i18n/en';
+import type { ZoneState } from '@shared/types';
 import { AppRoutes } from '../src/routes';
-import { renderApp, signedIn, signedOut } from './helpers';
 import type { Session } from '../src/auth/AuthProvider';
+import { photo } from './fixtures';
+import { renderApp, signedIn, signedOut } from './helpers';
 
 vi.mock('firebase/auth', () => ({ signInWithEmailAndPassword: vi.fn(), sendPasswordResetEmail: vi.fn() }));
 vi.mock('firebase/firestore', () => ({ doc: vi.fn(), updateDoc: vi.fn() }));
 vi.mock('../src/firebase', () => ({ auth: {}, db: {} }));
-vi.mock('../src/api', () => ({ createDraft: vi.fn(), updateDraftZone: vi.fn(), sendReport: vi.fn(), sendCorrection: vi.fn() }));
-// What the mocked report is: a draft, or sent with its zone waiting for a correction.
-const shown = vi.hoisted(() => ({ sent: false }));
+vi.mock('../src/api', () => ({
+  createDraft: vi.fn(), updateDraftZone: vi.fn(), sendReport: vi.fn(), sendCorrection: vi.fn(),
+  markSeen: vi.fn(), giveFeedback: vi.fn(), approveZone: vi.fn(), approveAllWithoutFeedback: vi.fn(),
+}));
+// What the mocked report is: a draft, or sent with its zone waiting for a correction; `zone` changes the zone further.
+const shown = vi.hoisted(() => ({ sent: false, zone: {} as Record<string, unknown>, zones: 'empty' as ZoneState }));
 // The store screens read live data; here they get fixed reports and zones so that routing alone is tested.
 vi.mock('../src/data/hooks', async () => {
   const fixtures = await import('./fixtures');
   const { STORE_850: store } = await import('@shared/store850');
   return {
     useStoreReports: () => fixtures.live([fixtures.makeReport({ campaignName: 'Autumn 2026', status: 'sent', sentAt: 5 })]),
+    useSentReports: () => fixtures.live([fixtures.makeReport({ campaignName: 'Autumn 2026', status: 'sent', sentAt: 5 })]),
     useReport: () => fixtures.live(fixtures.makeReport({ campaignName: 'Autumn 2026', ...(shown.sent ? { status: 'sent', sentAt: 5 } : {}) })),
-    useZones: () => fixtures.live(fixtures.allZoneDocs()),
-    useZone: () => fixtures.live(fixtures.makeZone('women-image', shown.sent ? { state: 'needs_correction' } : {})),
+    useZones: () => fixtures.live(fixtures.allZoneDocs(shown.zones)),
+    useZone: () => fixtures.live(fixtures.makeZone('women-image', { ...(shown.sent ? { state: 'needs_correction' } : {}), ...shown.zone })),
     useFeedback: () => fixtures.live([]),
     useStore: () => fixtures.live(store),
     usePhotoUrl: () => null,
@@ -48,7 +54,7 @@ describe('routing', () => {
   test('signed-in users visiting /login land on their home', () => {
     renderApp(<AppRoutes />, { session: signedIn('head_vm'), route: '/login' });
     expect(loginHeading()).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'VM Photo Report' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /850 Palladium Praha/ })).toBeInTheDocument();
 
     cleanup();
     renderApp(<AppRoutes />, { session: signedIn('store'), route: '/login' });
@@ -77,14 +83,23 @@ describe('routing', () => {
     expect(screen.getByRole('button', { name: en['store.newReport'] })).toBeInTheDocument();
   });
 
-  test('home shows the reviewer role label without a store code', () => {
-    renderApp(<AppRoutes />, { session: signedIn('head_vm'), route: '/' });
-    expect(screen.getByText('Head of VM')).toBeInTheDocument();
+  test.each(['avm', 'am', 'head_vm', 'director'] as const)('home is the list of sent reports for %s, with no New report button', (role) => {
+    renderApp(<AppRoutes />, { session: signedIn(role, 'en', { country: 'CZ' }), route: '/' });
+    expect(screen.getByRole('link', { name: /850 Palladium Praha/ })).toHaveAttribute('href', '/r/r1');
+    expect(screen.queryByRole('button', { name: en['store.newReport'] })).not.toBeInTheDocument();
   });
 
-  test('unknown paths fall back to the home shell', () => {
-    renderApp(<AppRoutes />, { session: signedIn('avm'), route: '/nope' });
-    expect(screen.getByText('Area VM')).toBeInTheDocument();
+  test('only Head of VM and Director get the country filter on the home screen', () => {
+    renderApp(<AppRoutes />, { session: signedIn('director'), route: '/' });
+    expect(screen.getByRole('combobox', { name: en['review.country'] })).toBeInTheDocument();
+    cleanup();
+    renderApp(<AppRoutes />, { session: signedIn('avm', 'en', { country: 'CZ' }), route: '/' });
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  });
+
+  test('unknown paths fall back to the home screen', () => {
+    renderApp(<AppRoutes />, { session: signedIn('avm', 'en', { country: 'CZ' }), route: '/nope' });
+    expect(screen.getByRole('link', { name: /850 Palladium Praha/ })).toBeInTheDocument();
   });
 
   test('an unreadable token shows the generic error with Try again, not "no access", and Try again retries', async () => {
@@ -146,14 +161,44 @@ describe('store routes', () => {
     }
   });
 
-  test.each(['/new', '/r/r1', '/r/r1/z/women-image'])('reviewers are sent home from %s (their screens come later)', (route) => {
-    renderApp(<AppRoutes />, { session: signedIn('avm'), route });
-    expect(screen.getByText('Area VM')).toBeInTheDocument();
+  test('reviewers are sent home from /new, which is for stores', () => {
+    renderApp(<AppRoutes />, { session: signedIn('avm', 'en', { country: 'CZ' }), route: '/new' });
+    expect(screen.getByRole('link', { name: /850 Palladium Praha/ })).toBeInTheDocument();
+    expect(screen.queryByLabelText(en['store.campaignName'])).not.toBeInTheDocument();
   });
 
   test('signed-out users are sent from /new to the login page', () => {
     renderApp(<AppRoutes />, { session: signedOut, route: '/new' });
     expect(loginHeading()).toBeInTheDocument();
+  });
+});
+
+describe('reviewer routes', () => {
+  test.each(['avm', 'am', 'head_vm', 'director'] as const)('/r/:reportId shows the report for %s: its zones and Approve all', (role) => {
+    shown.zones = 'submitted';
+    try {
+      renderApp(<AppRoutes />, { session: signedIn(role, 'en', { country: 'CZ' }), route: '/r/r1' });
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('850 Palladium Praha');
+      expect(screen.getByRole('link', { name: /Women's Image/ })).toHaveAttribute('href', '/r/r1/z/women-image');
+      expect(screen.getByRole('button', { name: en['review.approveAll'] })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: en['store.send'] })).not.toBeInTheDocument();
+    } finally {
+      shown.zones = 'empty';
+    }
+  });
+
+  test('/r/:reportId/z/:zoneId shows the zone to review: a form per photo and Approve', () => {
+    shown.zone = { state: 'submitted', versions: [{ n: 1, photos: [photo(1)], storeComment: 'Done', createdAt: 1 }] };
+    try {
+      renderApp(<AppRoutes />, { session: signedIn('head_vm'), route: '/r/r1/z/women-image' });
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Women's Image");
+      expect(screen.getByText('Done')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: en['review.sendFeedback'] })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: en['review.approve'] })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: en['store.takePhoto'] })).not.toBeInTheDocument();
+    } finally {
+      shown.zone = {};
+    }
   });
 });
 

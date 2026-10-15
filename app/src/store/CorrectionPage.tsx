@@ -1,17 +1,16 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ROLE_LABEL } from '@shared/access';
-import { formatDayMonth, isOverdue } from '@shared/dates';
-import type { FeedbackDoc, ReportDoc, ZoneDoc, ZoneVersion } from '@shared/types';
+import type { FeedbackDoc, ReportDoc, ZoneDoc } from '@shared/types';
 import { useFeedback, useReport, useZone } from '../data/hooks';
-import { formatDate } from '../i18n/formatDate';
 import { useT } from '../i18n/I18nProvider';
 import { PhotoPicker } from '../photos/PhotoPicker';
 import { PhotoThumb } from '../photos/PhotoThumb';
 import { PhotoWithStrokes } from '../photos/PhotoWithStrokes';
+import { FeedbackNote } from '../ui/FeedbackNote';
 import { Loading } from '../ui/Loading';
 import { StatusBadge } from '../ui/StatusBadge';
 import { useToast } from '../ui/Toast';
+import { VersionHistory } from '../ui/VersionHistory';
 import { correctionSessionFor } from './correctionSession';
 import { badgeState } from './zoneBadge';
 
@@ -39,25 +38,6 @@ export function CorrectionPage() {
     // A new round of feedback (one more version) starts a new form.
     ? <CorrectionForm key={`${report.data.id}/${zone.data.id}/${zone.data.versions.length}`} report={report.data} zone={zone.data} feedback={feedback.data} />
     : <ZoneHistory report={report.data} zone={zone.data} feedback={feedback.data} />;
-}
-
-/** Who gave a piece of feedback and when, what they wrote and the deadline (red once an open one has passed). */
-function FeedbackNote({ feedback, report, open }: { feedback: FeedbackDoc; report: ReportDoc; open: boolean }) {
-  const { t, lang } = useT();
-  const overdue = open && isOverdue(feedback.deadline, Date.now(), report.timezone);
-  return (
-    <article className="feedback-note">
-      <p className="feedback-author">
-        <strong>{feedback.authorName}</strong> · {ROLE_LABEL[feedback.authorRole]}
-        <span className="muted">{formatDate(lang, feedback.createdAt, report.timezone)}</span>
-      </p>
-      {feedback.comment && <p className="comment-text">{feedback.comment}</p>}
-      <p className={overdue ? 'feedback-deadline is-overdue' : 'feedback-deadline'}>
-        <span>{t('common.deadline', { date: formatDayMonth(feedback.deadline) })}</span>
-        {overdue && <span>{t('state.overdue')}</span>}
-      </p>
-    </article>
-  );
 }
 
 /**
@@ -111,7 +91,7 @@ function CorrectionForm({ report, zone, feedback }: { report: ReportDoc; zone: Z
           <section key={photo.path} aria-labelledby={`${ids}-photo-${index}`}>
             <h2 id={`${ids}-photo-${index}`}>{name}</h2>
             <PhotoWithStrokes path={photo.path} strokes={notes.flatMap((f) => f.strokes)} alt={name} />
-            {notes.map((f) => <FeedbackNote key={f.id} feedback={f} report={report} open />)}
+            {notes.map((f) => <FeedbackNote key={f.id} feedback={f} report={report} />)}
           </section>
         );
       })}
@@ -177,44 +157,5 @@ function ZoneHistory({ report, zone, feedback }: { report: ReportDoc; zone: Zone
         />
       ))}
     </>
-  );
-}
-
-function VersionHistory({ id, report, version, feedback }: { id: string; report: ReportDoc; version: ZoneVersion; feedback: FeedbackDoc[] }) {
-  const { t, lang } = useT();
-  // A zone that is not part of the campaign has an empty first version: nothing to show.
-  if (version.photos.length === 0 && !version.storeComment && feedback.length === 0) return null;
-  return (
-    <section aria-labelledby={id}>
-      <h2 id={id}>{t('store.version', { n: version.n })}</h2>
-      <p className="muted">{formatDate(lang, version.createdAt, report.timezone)}</p>
-      {version.photos.length > 0 && (
-        <div className="thumbs">
-          {version.photos.map((photo, index) => (
-            <PhotoThumb key={photo.path} photo={photo} alt={t('store.photo', { n: index + 1 })} />
-          ))}
-        </div>
-      )}
-      {version.storeComment && (
-        <>
-          <h3>{t('review.storeComment')}</h3>
-          <p className="comment-text">{version.storeComment}</p>
-        </>
-      )}
-      {feedback.length > 0 && (
-        <>
-          <h3>{t('review.feedback')}</h3>
-          {feedback.map((f) => {
-            const photo = version.photos[f.photoIndex];
-            return (
-              <div key={f.id} className="feedback-item">
-                {photo && <PhotoWithStrokes path={photo.path} strokes={f.strokes} alt={t('store.photo', { n: f.photoIndex + 1 })} />}
-                <FeedbackNote feedback={f} report={report} open={f.status === 'open'} />
-              </div>
-            );
-          })}
-        </>
-      )}
-    </section>
   );
 }

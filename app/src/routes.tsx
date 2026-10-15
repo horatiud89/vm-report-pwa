@@ -1,11 +1,13 @@
 import type { ReactElement } from 'react';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
-import { ROLE_LABEL } from '@shared/access';
 import { useSession } from './auth/AuthProvider';
 import { LoginPage } from './auth/LoginPage';
 import { ResetPage } from './auth/ResetPage';
 import { useReport } from './data/hooks';
 import { useT } from './i18n/I18nProvider';
+import { ReviewHome } from './review/ReviewHome';
+import { ReviewReportPage } from './review/ReviewReportPage';
+import { ReviewZonePage } from './review/ReviewZonePage';
 import { CorrectionPage } from './store/CorrectionPage';
 import { DraftReportPage } from './store/DraftReportPage';
 import { DraftZonePage } from './store/DraftZonePage';
@@ -55,22 +57,16 @@ function LoginRoute() {
   return user ? <Navigate to="/" replace /> : <LoginPage />;
 }
 
-/** Placeholder until the reviewer home screen replaces it (Task 14). */
-function HomeShell() {
-  const { claims } = useSession();
-  if (!claims) return null;
-  return (
-    <>
-      <h1>{APP_TITLE}</h1>
-      <p>{claims.storeId ? `${ROLE_LABEL[claims.role]} · ${claims.storeId}` : ROLE_LABEL[claims.role]}</p>
-    </>
-  );
-}
-
 /** The store's own reports, drafts and zones; reviewers have screens of their own and are sent home. */
 function StoreOnly({ children }: { children: ReactElement }) {
   const { claims } = useSession();
   return claims?.role === 'store' ? children : <Navigate to="/" replace />;
+}
+
+/** The store's own screen for a path, or the reviewer's: the same addresses serve both. */
+function ByRole({ store, reviewer }: { store: ReactElement; reviewer: ReactElement }) {
+  const { claims } = useSession();
+  return claims?.role === 'store' ? store : reviewer;
 }
 
 /** A zone of the store's report: edited while the report is a draft, then its feedback and corrections. */
@@ -84,7 +80,7 @@ function StoreZoneRoute() {
 
 function HomeRoute() {
   const { claims } = useSession();
-  return claims?.role === 'store' ? <StoreHome /> : <HomeShell />;
+  return claims?.role === 'store' ? <StoreHome /> : <ReviewHome />;
 }
 
 export function AppRoutes() {
@@ -95,8 +91,8 @@ export function AppRoutes() {
       <Route element={<RequireAccess />}>
         <Route path="/" element={<HomeRoute />} />
         <Route path="/new" element={<StoreOnly><NewReportPage /></StoreOnly>} />
-        <Route path="/r/:reportId" element={<StoreOnly><DraftReportPage /></StoreOnly>} />
-        <Route path="/r/:reportId/z/:zoneId" element={<StoreOnly><StoreZoneRoute /></StoreOnly>} />
+        <Route path="/r/:reportId" element={<ByRole store={<DraftReportPage />} reviewer={<ReviewReportPage />} />} />
+        <Route path="/r/:reportId/z/:zoneId" element={<ByRole store={<StoreZoneRoute />} reviewer={<ReviewZonePage />} />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

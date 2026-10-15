@@ -31,3 +31,8 @@ export function makeZone(id: string, over: Partial<ZoneDoc> = {}): ZoneDoc {
 export function allZoneDocs(rest: ZoneState = 'empty', states: Record<string, ZoneState> = {}): ZoneDoc[] {
   return allZones(STORE_850).map((z) => makeZone(z.id, { state: states[z.id] ?? rest }));
 }
+
+/** A photo of a given version of a zone. */
+export const versionPhoto = (n: number, version: number, zoneId = 'women-image'): PhotoRef => ({
+  path: `reports/CZ/850/r1/${zoneId}/v${version}_${n}.jpg`, width: 1440, height: 1920,
+});
