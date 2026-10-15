@@ -5,6 +5,7 @@ import { STORE_850, allZones } from '@shared/store850';
 import type { PhotoRef } from '@shared/types';
 import type { Caller } from '../src/caller';
 import type { Bucket, Deps } from '../src/deps';
+import { createDraft, sendReport, updateDraftZone } from '../src/draft';
 import type { Notifier, PushEvent } from '../src/notifier';
 
 // The emulators need no credentials; skip the GCE metadata probe google-auth-library would otherwise run (and warn about).
@@ -59,3 +60,19 @@ export async function putPhoto(bucket: Bucket, path: string): Promise<PhotoRef> 
 }
 
 export const photoPath = (reportId: string, zoneId: string, file = 'a.jpg') => `reports/CZ/850/${reportId}/${zoneId}/${file}`;
+
+/** A sent report built with the real draft handlers: one uploaded photo per zone, except the listed not_in_campaign zones. */
+export async function createSentReport(d: Deps, notInCampaign: string[] = []): Promise<string> {
+  const { reportId } = await createDraft(storeCaller, { campaignName: 'Autumn 2026' }, d);
+  const photos = await Promise.all(ZONE_IDS.map((zoneId) => (
+    notInCampaign.includes(zoneId) ? [] : putPhoto(d.bucket, photoPath(reportId, zoneId)).then((p) => [p])
+  )));
+  // One at a time, like the app does: every save rewrites the report summary, so parallel saves would only contend.
+  for (const [i, zoneId] of ZONE_IDS.entries()) {
+    await updateDraftZone(storeCaller, {
+      reportId, zoneId, photos: photos[i], storeComment: '', notInCampaign: notInCampaign.includes(zoneId),
+    }, d);
+  }
+  await sendReport(storeCaller, { reportId }, d);
+  return reportId;
+}

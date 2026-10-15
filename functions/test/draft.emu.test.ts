@@ -176,6 +176,14 @@ describe('updateDraftZone', () => {
     await fails(saveZone(reportId, 'women-image', [folderOnly]), 'invalid-argument');
   });
 
+  test('rejects the same photo path twice', async () => {
+    const reportId = await draft();
+    const photo = await putPhoto(d.bucket, photoPath(reportId, 'women-image'));
+    await fails(saveZone(reportId, 'women-image', [photo, photo]), 'invalid-argument');
+    await fails(saveZone(reportId, 'women-image', [photo, { ...photo, width: 5, height: 5 }]), 'invalid-argument');
+    expect(await getZone(reportId, 'women-image')).toMatchObject({ state: 'empty', versions: [{ photos: [] }] });
+  });
+
   test('rejects four photos', async () => {
     const reportId = await draft();
     const photos = await Promise.all(['a', 'b', 'c', 'd'].map((n) => putPhoto(d.bucket, photoPath(reportId, 'women-image', `${n}.jpg`))));
