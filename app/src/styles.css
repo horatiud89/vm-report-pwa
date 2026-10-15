@@ -252,6 +252,16 @@ textarea {
   white-space: nowrap;
 }
 
+/* In a zone row a long label (sk/ro "Not part of this campaign") wraps inside its pill, so the name keeps the room */
+.row-link > .badge {
+  flex-shrink: 0;
+  max-width: 40%;
+  padding: 3px 10px;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+
 /* Toast */
 .toast-region {
   position: fixed;

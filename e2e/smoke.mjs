@@ -201,6 +201,16 @@ async function screen(page, name) {
   shots.push(file);
 }
 
+/** Every zone name in a list keeps to two lines at most: a long status label wraps instead of squeezing it. */
+async function zoneNamesFit(page, name) {
+  const squeezed = await page.evaluate(() => [...document.querySelectorAll('.row-link .row-title')].filter((el) => {
+    const style = getComputedStyle(el);
+    const line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
+    return el.getBoundingClientRect().height > line * 2.5;
+  }).map((el) => el.textContent));
+  if (squeezed.length > 0) throw new Error(`${name}: zone names on more than two lines: ${squeezed.join(', ')}`);
+}
+
 async function signIn(page, tag) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(account(tag));
@@ -440,6 +450,7 @@ async function cycle(browser, backend) {
       await page.setViewportSize(SMALL_PHONE);
       await gotoInLanguage(page, path);
       await page.getByRole('heading', { level: 1 }).waitFor();
+      await zoneNamesFit(page, `${name}-360-${lang}`);
       await screen(page, `${name}-360-${lang}`);
       await page.setViewportSize(PHONE);
     }
