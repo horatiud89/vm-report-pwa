@@ -1,6 +1,6 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Route, Routes, useLocation, useNavigationType } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { en } from '@shared/i18n/en';
 import type { ReportDoc } from '@shared/types';
@@ -28,7 +28,7 @@ vi.mock('firebase/firestore', () => ({ doc: vi.fn(), updateDoc: vi.fn() }));
 vi.mock('../src/firebase', () => ({ auth: {}, db: {} }));
 
 function Where() {
-  return <p data-testid="where">{useLocation().pathname}</p>;
+  return <p data-testid="where" data-navigation={useNavigationType()}>{useLocation().pathname}</p>;
 }
 
 function renderPage(reports: ReportDoc[] = []) {
@@ -69,6 +69,15 @@ describe('NewReportPage', () => {
 
     expect(api.createDraft).toHaveBeenCalledWith({ campaignName: 'Autumn 2026' });
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/r/new1'));
+  });
+
+  test('replaces /new in the history, so Back does not return to the form (which would redirect to the draft)', async () => {
+    renderPage();
+    const user = userEvent.setup();
+    await user.type(nameInput(), 'Autumn');
+    await user.click(submit());
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/r/new1'));
+    expect(screen.getByTestId('where')).toHaveAttribute('data-navigation', 'REPLACE');
   });
 
   test('submits with Enter and only once while the call is running', async () => {

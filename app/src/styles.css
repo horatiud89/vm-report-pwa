@@ -476,6 +476,10 @@ h2 {
   font-size: 0.875rem;
 }
 
+.action-bar .hint p {
+  margin: 0 0 8px;
+}
+
 /* Zone editor */
 .save-status {
   display: flex;

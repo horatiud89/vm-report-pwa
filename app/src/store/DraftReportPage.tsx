@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { isOverdue } from '@shared/dates';
 import { canSend } from '@shared/status';
@@ -10,6 +10,7 @@ import { Loading } from '../ui/Loading';
 import { StatusBadge } from '../ui/StatusBadge';
 import { useToast } from '../ui/Toast';
 import { reportStatusLabel } from './reportStatusLabel';
+import { reportSaveState, retryFailedSaves, subscribeSessions } from './zoneSession';
 
 /** The state shown for a zone: a correction past its deadline reads Overdue. */
 function badgeState(zone: ZoneDoc, report: ReportDoc, now: number): ZoneDoc['state'] | 'overdue' {
@@ -30,6 +31,8 @@ export function DraftReportPage() {
   const store = useStore(report.data?.storeId ?? '');
   const [sending, setSending] = useState(false);
   const sendStarted = useRef(false);
+  // Photos and comments of a zone may still be on their way (the user can leave a zone before they are stored).
+  const saveState = useSyncExternalStore(subscribeSessions, () => reportSaveState(reportId));
 
   if (report.loading || zones.loading || store.loading) return <Loading />;
   if (report.error || zones.error) return <p role="alert">{t('error.generic')}</p>;
@@ -51,11 +54,12 @@ export function DraftReportPage() {
   }
 
   const isDraft = current.status === 'draft';
-  const ready = canSend(zones.data.map((z) => z.state));
+  const complete = canSend(zones.data.map((z) => z.state));
+  const ready = complete && saveState === 'idle';
   const now = Date.now();
 
   async function send() {
-    if (sendStarted.current) return;
+    if (sendStarted.current || saveState !== 'idle') return;
     sendStarted.current = true;
     setSending(true);
     try {
@@ -93,7 +97,14 @@ export function DraftReportPage() {
 
       {isDraft && (
         <div className="action-bar">
-          {!ready && <p className="hint">{t('store.sendHint')}</p>}
+          {saveState === 'pending' && <p className="hint">{t('store.saving')}</p>}
+          {saveState === 'failed' && (
+            <div className="hint" role="alert">
+              <p>{t('error.generic')}</p>
+              <button type="button" className="btn btn-small" onClick={() => retryFailedSaves(reportId)}>{t('common.retry')}</button>
+            </div>
+          )}
+          {saveState === 'idle' && !complete && <p className="hint">{t('store.sendHint')}</p>}
           <button type="button" className="btn btn-primary" disabled={!ready || sending} onClick={() => void send()}>
             {t('store.send')}
           </button>

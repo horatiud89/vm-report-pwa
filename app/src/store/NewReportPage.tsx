@@ -42,7 +42,8 @@ export function NewReportPage() {
     setBusy(true);
     try {
       const { reportId } = await createDraft({ campaignName });
-      navigate(`/r/${reportId}`);
+      // Replace the form: Back must not return to /new, which would send the user on to the draft with a notice.
+      navigate(`/r/${reportId}`, { replace: true });
     } catch (error) {
       creating.current = false;
       setBusy(false);

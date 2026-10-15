@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
@@ -6,12 +6,15 @@ import { en } from '@shared/i18n/en';
 import { STORE_850 } from '@shared/store850';
 import * as api from '../src/api';
 import { DraftReportPage } from '../src/store/DraftReportPage';
-import { allZoneDocs, live, makeReport } from './fixtures';
+import { clearZoneSessions, sessionFor } from '../src/store/zoneSession';
+import * as compress from '../src/photos/compress';
+import { allZoneDocs, live, makeReport, makeZone, photo } from './fixtures';
 import { renderApp, signedIn } from './helpers';
 
 const hooks = vi.hoisted(() => ({ useReport: vi.fn(), useZones: vi.fn(), useStore: vi.fn() }));
 vi.mock('../src/data/hooks', () => hooks);
-vi.mock('../src/api', () => ({ sendReport: vi.fn() }));
+vi.mock('../src/api', () => ({ sendReport: vi.fn(), updateDraftZone: vi.fn() }));
+vi.mock('../src/photos/compress', () => ({ uploadZonePhoto: vi.fn() }));
 vi.mock('firebase/firestore', () => ({ doc: vi.fn(), updateDoc: vi.fn() }));
 vi.mock('../src/firebase', () => ({ auth: {}, db: {} }));
 
@@ -38,7 +41,10 @@ function renderPage(zones = allZoneDocs(), report = makeReport()) {
 const sendButton = () => screen.getByRole('button', { name: en['store.send'] });
 
 beforeEach(() => {
+  clearZoneSessions();
   vi.mocked(api.sendReport).mockReset().mockResolvedValue(undefined);
+  vi.mocked(api.updateDraftZone).mockReset().mockResolvedValue(undefined);
+  vi.mocked(compress.uploadZonePhoto).mockReset();
 });
 
 describe('DraftReportPage: send', () => {
@@ -92,6 +98,72 @@ describe('DraftReportPage: send', () => {
     expect(sendButton()).toBeEnabled();
     await user.click(sendButton());
     expect(api.sendReport).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('DraftReportPage: zone edits still being saved', () => {
+  const file = () => new File([new Uint8Array(4)], 'a.jpg', { type: 'image/jpeg' });
+  /** The user took a photo in a zone and went back to the report before it was stored and saved. */
+  const photoInFlight = (report = makeReport()) => sessionFor(report, makeZone('women-image')).addPhoto(file());
+
+  test('Send is disabled, with the Saving hint, while a zone uploads; it is enabled once the zone is saved', async () => {
+    let finish!: (p: ReturnType<typeof photo>) => void;
+    vi.mocked(compress.uploadZonePhoto).mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    renderPage(allZoneDocs('photo_added'));
+    expect(sendButton()).toBeEnabled();
+
+    act(() => { void photoInFlight(); });
+    expect(sendButton()).toBeDisabled();
+    expect(screen.getByText(en['store.saving'])).toBeInTheDocument();
+
+    await act(async () => finish(photo(1)));
+    await waitFor(() => expect(sendButton()).toBeEnabled());
+    expect(screen.queryByText(en['store.saving'])).not.toBeInTheDocument();
+    expect(api.updateDraftZone).toHaveBeenCalledWith(expect.objectContaining({ reportId: 'r1', photos: [photo(1)] }));
+  });
+
+  test('Send is disabled while the save request of a zone is running', async () => {
+    let finishSave!: () => void;
+    vi.mocked(api.updateDraftZone).mockReturnValue(new Promise<void>((resolve) => { finishSave = resolve; }));
+    vi.mocked(compress.uploadZonePhoto).mockResolvedValue(photo(1));
+    renderPage(allZoneDocs('photo_added'));
+
+    await act(async () => { await photoInFlight(); });
+    expect(sendButton()).toBeDisabled();
+    expect(screen.getByText(en['store.saving'])).toBeInTheDocument();
+
+    await act(async () => finishSave());
+    expect(sendButton()).toBeEnabled();
+  });
+
+  test('a zone of another report does not hold this report back', () => {
+    vi.mocked(compress.uploadZonePhoto).mockReturnValue(new Promise(() => undefined));
+    renderPage(allZoneDocs('photo_added'));
+    act(() => { void photoInFlight(makeReport({ id: 'other' })); });
+    expect(sendButton()).toBeEnabled();
+  });
+
+  test('a save that failed blocks Send, says so, and Try again saves it', async () => {
+    vi.mocked(compress.uploadZonePhoto).mockResolvedValue(photo(1));
+    vi.mocked(api.updateDraftZone).mockRejectedValueOnce(new Error('offline'));
+    renderPage(allZoneDocs('photo_added'));
+    const user = userEvent.setup();
+
+    await act(async () => { await photoInFlight(); });
+    expect(sendButton()).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent(en['error.generic']);
+
+    await user.click(screen.getByRole('button', { name: en['common.retry'] }));
+    await waitFor(() => expect(sendButton()).toBeEnabled());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(api.updateDraftZone).toHaveBeenCalledTimes(2);
+  });
+
+  test('a sent report has no Send button and is not affected', () => {
+    vi.mocked(compress.uploadZonePhoto).mockReturnValue(new Promise(() => undefined));
+    renderPage(allZoneDocs('submitted'), makeReport({ status: 'sent', sentAt: 5 }));
+    act(() => { void photoInFlight(); });
+    expect(screen.queryByRole('button', { name: en['store.send'] })).not.toBeInTheDocument();
   });
 });
 

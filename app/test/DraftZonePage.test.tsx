@@ -7,6 +7,7 @@ import type { PhotoRef, ReportDoc, ZoneDoc } from '@shared/types';
 import * as api from '../src/api';
 import * as compress from '../src/photos/compress';
 import { DraftZonePage } from '../src/store/DraftZonePage';
+import { clearZoneSessions } from '../src/store/zoneSession';
 import { live, makeReport, makeZone, photo } from './fixtures';
 import { renderApp, signedIn } from './helpers';
 
@@ -55,6 +56,7 @@ const toggle = () => screen.getByRole('checkbox', { name: en['store.notInCampaig
 const removeButtons = () => screen.queryAllByRole('button', { name: en['store.removePhoto'] });
 
 beforeEach(() => {
+  clearZoneSessions();
   hooks.usePhotoUrl.mockImplementation((path: string) => (path ? `https://img.test/${path}` : null));
   vi.mocked(api.updateDraftZone).mockReset().mockResolvedValue(undefined);
   vi.mocked(compress.uploadZonePhoto).mockReset();
@@ -361,6 +363,153 @@ describe('DraftZonePage: saves never overlap', () => {
 
     await waitFor(() => expect(api.updateDraftZone).toHaveBeenLastCalledWith(payload({ photos: [photo(2), photo(1)] })));
     expect(screen.getAllByRole('img')).toHaveLength(2);
+  });
+});
+
+describe('DraftZonePage: edits survive leaving the zone', () => {
+  test('an upload that finishes after the user left and came back is saved with the comment typed meanwhile', async () => {
+    let finish!: (p: PhotoRef) => void;
+    vi.mocked(compress.uploadZonePhoto).mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    const first = renderZone(zoneWith([]));
+    await userEvent.setup().upload(cameraInput(first.container), jpeg());
+    first.unmount(); // Back to the report ...
+
+    renderZone(zoneWith([])); // ... and into the same zone again: the snapshot still has no photo
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(screen.getByText('Add photo (1/3)')).toBeInTheDocument();
+    fireEvent.change(comment(), { target: { value: 'Missing tags' } });
+    fireEvent.blur(comment());
+    await waitFor(() => expect(api.updateDraftZone).toHaveBeenCalledWith(payload({ storeComment: 'Missing tags' })));
+
+    await act(async () => finish(photo(1)));
+
+    await waitFor(() => expect(api.updateDraftZone).toHaveBeenLastCalledWith(
+      payload({ photos: [photo(1)], storeComment: 'Missing tags' }),
+    ));
+    // No save ever sent the photo without the comment, or the comment without the photo after it arrived.
+    const sent = vi.mocked(api.updateDraftZone).mock.calls.map(([p]) => p);
+    expect(sent.filter((p) => p.photos.length > 0 && p.storeComment === '')).toEqual([]);
+    expect(screen.getByRole('img', { name: 'Photo 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+  });
+
+  test('the same happens when the upload finishes while the user is away from the zone', async () => {
+    let finish!: (p: PhotoRef) => void;
+    vi.mocked(compress.uploadZonePhoto).mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    const first = renderZone(zoneWith([], {}, 'Wall done'));
+    await userEvent.setup().upload(cameraInput(first.container), jpeg());
+    first.unmount();
+
+    await act(async () => finish(photo(1)));
+
+    await waitFor(() => expect(api.updateDraftZone).toHaveBeenCalledWith(payload({ photos: [photo(1)], storeComment: 'Wall done' })));
+    renderZone(zoneWith([], {}, 'Wall done')); // the snapshot has not caught up yet: the session still shows the photo
+    expect(screen.getByRole('img', { name: 'Photo 1' })).toBeInTheDocument();
+  });
+
+  test('coming back shows the latest values of the earlier visit, not the older snapshot', async () => {
+    const first = renderZone(zoneWith([photo(1), photo(2)], {}, 'old'));
+    await userEvent.setup().click(removeButtons()[0]!);
+    fireEvent.change(comment(), { target: { value: 'newer' } });
+    first.unmount();
+
+    renderZone(zoneWith([photo(1), photo(2)], {}, 'old'));
+    expect(comment()).toHaveValue('newer');
+    expect(screen.getAllByRole('img')).toHaveLength(1);
+    await waitFor(() => expect(api.updateDraftZone).toHaveBeenLastCalledWith(payload({ photos: [photo(2)], storeComment: 'newer' })));
+  });
+
+  test('a failed save stays unsaved: retried on the next change, and on leaving the zone', async () => {
+    vi.mocked(api.updateDraftZone).mockRejectedValueOnce(new Error('offline'));
+    const first = renderZone(zoneWith([photo(1)]));
+    fireEvent.change(comment(), { target: { value: 'keep me' } });
+    fireEvent.blur(comment());
+    expect(await screen.findByRole('button', { name: en['common.retry'] })).toBeInTheDocument();
+    expect(api.updateDraftZone).toHaveBeenCalledTimes(1);
+
+    // Next change: sends everything again, comment included.
+    await userEvent.setup().click(removeButtons()[0]!);
+    await waitFor(() => expect(api.updateDraftZone).toHaveBeenCalledTimes(2));
+    expect(api.updateDraftZone).toHaveBeenLastCalledWith(payload({ photos: [], storeComment: 'keep me' }));
+
+    // Leaving: a save that failed is tried once more.
+    vi.mocked(api.updateDraftZone).mockRejectedValueOnce(new Error('offline'));
+    fireEvent.change(comment(), { target: { value: 'keep me too' } });
+    fireEvent.blur(comment());
+    await waitFor(() => expect(api.updateDraftZone).toHaveBeenCalledTimes(3));
+    await screen.findByRole('button', { name: en['common.retry'] });
+    first.unmount();
+    await waitFor(() => expect(api.updateDraftZone).toHaveBeenCalledTimes(4));
+    expect(api.updateDraftZone).toHaveBeenLastCalledWith(payload({ photos: [], storeComment: 'keep me too' }));
+  });
+
+  test('an unsaved zone is kept for the next visit even when the snapshot is newer', async () => {
+    vi.mocked(api.updateDraftZone).mockRejectedValue(new Error('offline'));
+    const first = renderZone(zoneWith([]));
+    fireEvent.change(comment(), { target: { value: 'not saved yet' } });
+    fireEvent.blur(comment());
+    await screen.findByRole('button', { name: en['common.retry'] });
+    first.unmount();
+    await waitFor(() => expect(api.updateDraftZone).toHaveBeenCalledTimes(2));
+
+    renderZone(zoneWith([], {}, 'from the server'));
+    expect(comment()).toHaveValue('not saved yet');
+  });
+
+  describe('once everything is saved', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-15T10:00:00Z'));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    test('a visit shortly after trusts the session (the snapshot may lag), a much later one reads the snapshot', async () => {
+      const first = renderZone(zoneWith([]));
+      fireEvent.change(comment(), { target: { value: 'mine' } });
+      fireEvent.blur(comment());
+      await waitFor(() => expect(api.updateDraftZone).toHaveBeenCalledTimes(1));
+      await screen.findByText(en['store.saved']);
+      first.unmount();
+
+      vi.setSystemTime(new Date('2026-10-15T10:00:10Z'));
+      const second = renderZone(zoneWith([], {}, 'older snapshot'));
+      expect(comment()).toHaveValue('mine');
+      second.unmount();
+
+      vi.setSystemTime(new Date('2026-10-15T10:05:00Z'));
+      renderZone(zoneWith([], {}, 'changed on another device'));
+      expect(comment()).toHaveValue('changed on another device');
+    });
+  });
+});
+
+describe('DraftZonePage: saved status', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test('does not say Saved while text typed during a save is still waiting to be saved', async () => {
+    let finish!: () => void;
+    vi.mocked(api.updateDraftZone).mockReturnValueOnce(new Promise<void>((resolve) => { finish = resolve; }));
+    renderZone();
+    fireEvent.change(comment(), { target: { value: 'a' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(800); });
+    expect(screen.getByText(en['store.saving'])).toBeInTheDocument();
+
+    fireEvent.change(comment(), { target: { value: 'ab' } }); // typed while the first save is in flight
+    await act(async () => finish());
+    expect(screen.queryByText(en['store.saved'])).not.toBeInTheDocument();
+    expect(api.updateDraftZone).toHaveBeenCalledTimes(1);
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(800); });
+    expect(api.updateDraftZone).toHaveBeenCalledTimes(2);
+    expect(api.updateDraftZone).toHaveBeenLastCalledWith(payload({ storeComment: 'ab' }));
+    expect(screen.getByText(en['store.saved'])).toBeInTheDocument();
   });
 });
 
