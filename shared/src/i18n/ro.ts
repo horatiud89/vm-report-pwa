@@ -46,6 +46,7 @@ export const ro: Dict = {
   'review.storeComment': 'Comentariul magazinului',
 
   'common.deadline': 'Termen {date}',
+  'common.retry': 'Încearcă din nou',
 
   'push.enable': 'Activează notificările',
   'push.enabled': 'Notificările sunt activate',

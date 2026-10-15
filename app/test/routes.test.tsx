@@ -34,11 +34,19 @@ describe('routing', () => {
     expect(screen.getByRole('heading', { name: 'VM Photo Report' })).toBeInTheDocument();
   });
 
-  test('nothing is rendered while the session is loading', () => {
+  test('a neutral busy indicator, and no login form or buttons, show while the session is loading', () => {
     const loading: Session = { ...signedOut, loading: true };
-    renderApp(<AppRoutes />, { session: loading, route: '/settings' });
+    const { container } = renderApp(<AppRoutes />, { session: loading, route: '/settings' });
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
     expect(loginHeading()).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  test('the login route shows the busy indicator too while the session is loading', () => {
+    const loading: Session = { ...signedOut, loading: true };
+    const { container } = renderApp(<AppRoutes />, { session: loading, route: '/login' });
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+    expect(loginHeading()).not.toBeInTheDocument();
   });
 
   test('home shows the role label and, for a store user, the store code', () => {
@@ -54,6 +62,24 @@ describe('routing', () => {
   test('unknown paths fall back to the home shell', () => {
     renderApp(<AppRoutes />, { session: signedIn('avm'), route: '/nope' });
     expect(screen.getByText('Area VM')).toBeInTheDocument();
+  });
+
+  test('an unreadable token shows the generic error with Try again, not "no access", and Try again retries', async () => {
+    const session: Session = { ...signedIn('store'), claims: null, claimsError: true };
+    renderApp(<AppRoutes />, { session, route: '/' });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(en['error.generic']);
+    expect(screen.queryByText(en['error.noAccess'])).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: en['common.retry'] }));
+    expect(session.retryClaims).toHaveBeenCalledTimes(1);
+  });
+
+  test('an unreadable token still lets the user log out', async () => {
+    const session: Session = { ...signedIn('store'), claims: null, claimsError: true };
+    renderApp(<AppRoutes />, { session, route: '/' });
+
+    await userEvent.setup().click(screen.getByRole('button', { name: en['settings.logout'] }));
+    expect(session.logout).toHaveBeenCalled();
   });
 
   test('a signed-in user without a role claim sees the no-access message and can log out', async () => {

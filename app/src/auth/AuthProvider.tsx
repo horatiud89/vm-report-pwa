@@ -8,8 +8,11 @@ import { auth, db } from '../firebase';
 
 export interface Session {
   user: User | null;
-  /** Null for a signed-out user and for an account without a (valid) role claim. */
+  /** Null for a signed-out user and for a token that was read fine but carries no valid role (no access). */
   claims: Claims | null;
+  /** The token could not be read (offline, flaky network): says nothing about access; `retryClaims` tries again. */
+  claimsError: boolean;
+  retryClaims: () => void;
   /** The users/{uid} document; null until it arrives or when it does not exist. */
   profile: UserDoc | null;
   loading: boolean;
@@ -21,6 +24,9 @@ export const AuthContext = createContext<Session | null>(null);
 
 /** How long the first screen waits for the profile (language) before showing in English; offline it may never come. */
 const PROFILE_WAIT_MS = 3000;
+
+/** How long the first screen waits for the token claims before offering a retry (the SDK itself may take 30 s). */
+const CLAIMS_WAIT_MS = 8000;
 
 const ROLES: readonly Role[] = ['store', 'avm', 'am', 'head_vm', 'director'];
 const COUNTRIES: readonly Country[] = ['CZ', 'SK', 'RO'];
@@ -39,7 +45,8 @@ type AuthState = { ready: false } | { ready: true; user: User | null };
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>({ ready: false });
   // Each result remembers the User it was loaded for, so a stale one (a previous sign-in) is never shown.
-  const [claimsOf, setClaimsOf] = useState<{ user: User; claims: Claims | null } | null>(null);
+  const [claimsOf, setClaimsOf] = useState<{ user: User; claims: Claims | null; failed: boolean } | null>(null);
+  const [claimsAttempt, setClaimsAttempt] = useState(0);
   const [profileOf, setProfileOf] = useState<{ user: User; profile: UserDoc | null } | null>(null);
 
   useEffect(() => onAuthStateChanged(auth, (next) => setAuthState({ ready: true, user: next })), []);
@@ -49,12 +56,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    user.getIdTokenResult().then(
-      (result) => { if (!cancelled) setClaimsOf({ user, claims: parseClaims(result.claims) }); },
-      () => { if (!cancelled) setClaimsOf({ user, claims: null }); },
+    // A retry forces a refresh of the token; the first read may use the cached one.
+    user.getIdTokenResult(claimsAttempt > 0).then(
+      (result) => { if (!cancelled) setClaimsOf({ user, claims: parseClaims(result.claims), failed: false }); },
+      () => { if (!cancelled) setClaimsOf({ user, claims: null, failed: true }); },
     );
-    return () => { cancelled = true; };
-  }, [user]);
+    // Do not wait on the SDK's own network timeout; a late result still replaces this one.
+    const giveUp = setTimeout(
+      () => setClaimsOf((current) => (current?.user === user ? current : { user, claims: null, failed: true })),
+      CLAIMS_WAIT_MS,
+    );
+    return () => { cancelled = true; clearTimeout(giveUp); };
+  }, [user, claimsAttempt]);
+
+  const retryClaims = useCallback(() => {
+    setClaimsOf(null);
+    setClaimsAttempt((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -71,17 +89,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => signOut(auth), []);
 
-  const session = useMemo<Session>(() => {
-    const claimsHere = user !== null && claimsOf?.user === user ? claimsOf : null;
-    const profileHere = user !== null && profileOf?.user === user ? profileOf : null;
-    return {
-      user,
-      claims: claimsHere?.claims ?? null,
-      profile: profileHere?.profile ?? null,
-      loading: !authState.ready || (user !== null && (!claimsHere || !profileHere)),
-      logout,
-    };
-  }, [authState.ready, user, claimsOf, profileOf, logout]);
+  const claimsHere = user !== null && claimsOf?.user === user ? claimsOf : null;
+  const profileHere = user !== null && profileOf?.user === user ? profileOf : null;
+  const claimsError = claimsHere?.failed ?? false;
+
+  // Back online after a failed read: try again without waiting for a tap.
+  useEffect(() => {
+    if (!claimsError) return;
+    window.addEventListener('online', retryClaims);
+    return () => window.removeEventListener('online', retryClaims);
+  }, [claimsError, retryClaims]);
+
+  const session = useMemo<Session>(() => ({
+    user,
+    claims: claimsHere?.claims ?? null,
+    claimsError,
+    retryClaims,
+    profile: profileHere?.profile ?? null,
+    loading: !authState.ready || (user !== null && (!claimsHere || !profileHere)),
+    logout,
+  }), [authState.ready, user, claimsHere, claimsError, profileHere, retryClaims, logout]);
 
   return <AuthContext.Provider value={session}>{children}</AuthContext.Provider>;
 }

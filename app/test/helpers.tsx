@@ -8,7 +8,9 @@ import type { Session } from '../src/auth/AuthProvider';
 import { I18nProvider } from '../src/i18n/I18nProvider';
 import { ToastProvider } from '../src/ui/Toast';
 
-export const signedOut: Session = { user: null, claims: null, profile: null, loading: false, logout: vi.fn() };
+const noRetry = { claimsError: false, retryClaims: vi.fn() };
+
+export const signedOut: Session = { user: null, claims: null, profile: null, loading: false, logout: vi.fn(), ...noRetry };
 
 export function signedIn(role: Role, lang: Lang = 'en', extra: Partial<Claims> = {}): Session {
   const claims: Claims = { role, country: role === 'store' ? 'CZ' : null, storeId: role === 'store' ? '850' : null, ...extra };
@@ -16,7 +18,7 @@ export function signedIn(role: Role, lang: Lang = 'en', extra: Partial<Claims> =
     email: 'someone@example.com', role, country: claims.country, storeId: claims.storeId,
     displayName: 'Someone', language: lang, fcmTokens: [],
   };
-  return { user: { uid: 'u1' } as Session['user'], claims, profile, loading: false, logout: vi.fn() };
+  return { user: { uid: 'u1' } as Session['user'], claims, profile, loading: false, logout: vi.fn(), ...noRetry };
 }
 
 export function renderApp(ui: ReactElement, { session = signedOut, route = '/' }: { session?: Session; route?: string } = {}) {

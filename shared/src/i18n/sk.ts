@@ -45,6 +45,7 @@ export const sk: Dict = {
   'review.storeComment': 'Komentár predajne',
 
   'common.deadline': 'Termín {date}',
+  'common.retry': 'Skúsiť znova',
 
   'push.enable': 'Zapnúť upozornenia',
   'push.enabled': 'Upozornenia sú zapnuté',

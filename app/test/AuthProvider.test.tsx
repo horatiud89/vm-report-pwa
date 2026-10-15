@@ -1,7 +1,12 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { en } from '@shared/i18n/en';
 import { AuthProvider, useSession } from '../src/auth/AuthProvider';
+import { I18nProvider } from '../src/i18n/I18nProvider';
+import { AppRoutes } from '../src/routes';
+import { ToastProvider } from '../src/ui/Toast';
 
 const mocks = vi.hoisted(() => ({
   onAuthStateChanged: vi.fn(),
@@ -10,8 +15,13 @@ const mocks = vi.hoisted(() => ({
   onSnapshot: vi.fn(),
 }));
 
-vi.mock('firebase/auth', () => ({ onAuthStateChanged: mocks.onAuthStateChanged, signOut: mocks.signOut }));
-vi.mock('firebase/firestore', () => ({ doc: mocks.doc, onSnapshot: mocks.onSnapshot }));
+vi.mock('firebase/auth', () => ({
+  onAuthStateChanged: mocks.onAuthStateChanged,
+  signOut: mocks.signOut,
+  signInWithEmailAndPassword: vi.fn(),
+  sendPasswordResetEmail: vi.fn(),
+}));
+vi.mock('firebase/firestore', () => ({ doc: mocks.doc, onSnapshot: mocks.onSnapshot, updateDoc: vi.fn() }));
 vi.mock('../src/firebase', () => ({ auth: { name: 'test-auth' }, db: { name: 'test-db' } }));
 
 const PROFILE = { email: 'a@example.com', role: 'store', country: 'CZ', storeId: '850', displayName: 'A', language: 'cs', fcmTokens: [] };
@@ -33,11 +43,12 @@ function signInAs(user: ReturnType<typeof fakeUser> | null, profile: unknown = P
 }
 
 function Probe() {
-  const { user, claims, profile, loading, logout } = useSession();
+  const { user, claims, claimsError, profile, loading, logout, retryClaims } = useSession();
   return (
     <div>
-      <p data-testid="state">{JSON.stringify({ uid: user?.uid ?? null, claims, language: profile?.language ?? null, loading })}</p>
+      <p data-testid="state">{JSON.stringify({ uid: user?.uid ?? null, claims, claimsError, language: profile?.language ?? null, loading })}</p>
       <button onClick={() => void logout()}>out</button>
+      <button onClick={retryClaims}>retry</button>
     </div>
   );
 }
@@ -58,7 +69,7 @@ describe('AuthProvider', () => {
     expect(state().loading).toBe(true);
 
     await waitFor(() => expect(state().loading).toBe(false));
-    expect(state()).toEqual({ uid: 'u1', claims: { role: 'store', country: 'CZ', storeId: '850' }, language: 'cs', loading: false });
+    expect(state()).toEqual({ uid: 'u1', claims: { role: 'store', country: 'CZ', storeId: '850' }, claimsError: false, language: 'cs', loading: false });
     expect(mocks.doc).toHaveBeenCalledWith({ name: 'test-db' }, 'users', 'u1');
   });
 
@@ -79,6 +90,65 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(state().loading).toBe(false));
     expect(state().uid).toBe('u1');
     expect(state().claims).toBeNull();
+    expect(state().claimsError).toBe(false); // the token was read: this really is "no access"
+  });
+
+  test('an unreadable token is a claims error, not "no role"', async () => {
+    const user = fakeUser({ role: 'store', country: 'CZ', storeId: '850' });
+    user.getIdTokenResult.mockRejectedValue(new Error('network-request-failed'));
+    signInAs(user);
+    render(<AuthProvider><Probe /></AuthProvider>);
+
+    await waitFor(() => expect(state().loading).toBe(false));
+    expect(state().claims).toBeNull();
+    expect(state().claimsError).toBe(true);
+  });
+
+  test('retryClaims forces a token refresh and recovers', async () => {
+    const user = fakeUser({ role: 'head_vm' });
+    user.getIdTokenResult.mockRejectedValueOnce(new Error('network-request-failed'));
+    signInAs(user);
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(state().claimsError).toBe(true));
+    expect(user.getIdTokenResult).toHaveBeenLastCalledWith(false);
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'retry' }));
+
+    await waitFor(() => expect(state().claims).toEqual({ role: 'head_vm', country: null, storeId: null }));
+    expect(state().claimsError).toBe(false);
+    expect(user.getIdTokenResult).toHaveBeenLastCalledWith(true);
+  });
+
+  test('coming back online after a failed read retries by itself', async () => {
+    const user = fakeUser({ role: 'head_vm' });
+    user.getIdTokenResult.mockRejectedValueOnce(new Error('network-request-failed'));
+    signInAs(user);
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(state().claimsError).toBe(true));
+
+    act(() => { window.dispatchEvent(new Event('online')); });
+
+    await waitFor(() => expect(state().claims?.role).toBe('head_vm'));
+    expect(state().claimsError).toBe(false);
+  });
+
+  test('a token read that never answers becomes a claims error after the wait', async () => {
+    vi.useFakeTimers();
+    try {
+      const user = fakeUser({ role: 'store', country: 'CZ', storeId: '850' });
+      user.getIdTokenResult.mockReturnValue(new Promise(() => {}));
+      signInAs(user);
+      render(<AuthProvider><Probe /></AuthProvider>);
+
+      await act(() => vi.advanceTimersByTimeAsync(0)); // sign-in settles; the token read stays pending
+      await act(() => vi.advanceTimersByTimeAsync(7500));
+      expect(state().loading).toBe(true);
+
+      await act(() => vi.advanceTimersByTimeAsync(1000));
+      expect(state()).toMatchObject({ claims: null, claimsError: true, loading: false });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test('a missing users/{uid} document leaves profile null', async () => {
@@ -100,7 +170,7 @@ describe('AuthProvider', () => {
       expect(state().loading).toBe(true);
 
       await act(() => vi.advanceTimersByTimeAsync(1000));
-      expect(state()).toEqual({ uid: 'u1', claims: { role: 'store', country: 'CZ', storeId: '850' }, language: null, loading: false });
+      expect(state()).toEqual({ uid: 'u1', claims: { role: 'store', country: 'CZ', storeId: '850' }, claimsError: false, language: null, loading: false });
     } finally {
       vi.useRealTimers();
     }
@@ -110,7 +180,7 @@ describe('AuthProvider', () => {
     signInAs(null);
     render(<AuthProvider><Probe /></AuthProvider>);
     await waitFor(() => expect(state().loading).toBe(false));
-    expect(state()).toEqual({ uid: null, claims: null, language: null, loading: false });
+    expect(state()).toEqual({ uid: null, claims: null, claimsError: false, language: null, loading: false });
     expect(mocks.onSnapshot).not.toHaveBeenCalled();
   });
 
@@ -121,5 +191,31 @@ describe('AuthProvider', () => {
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'out' }));
     expect(mocks.signOut).toHaveBeenCalledWith({ name: 'test-auth' });
+  });
+});
+
+describe('the app with an unreadable token', () => {
+  test('shows the generic error and Try again (not "no access"); Try again then opens the signed-in shell', async () => {
+    const user = fakeUser({ role: 'store', country: 'CZ', storeId: '850' });
+    user.getIdTokenResult.mockRejectedValueOnce(new Error('network-request-failed'));
+    signInAs(user, { ...PROFILE, language: 'en' });
+    render(
+      <AuthProvider>
+        <I18nProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={['/']}><AppRoutes /></MemoryRouter>
+          </ToastProvider>
+        </I18nProvider>
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(en['error.generic']);
+    expect(screen.queryByText(en['error.noAccess'])).not.toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: en['common.retry'] }));
+
+    expect(await screen.findByRole('heading', { name: 'VM Photo Report' })).toBeInTheDocument();
+    expect(screen.getByText('Store · 850')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

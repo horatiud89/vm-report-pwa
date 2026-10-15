@@ -44,6 +44,7 @@ export const en = {
   'review.storeComment': 'Store comment',
 
   'common.deadline': 'Deadline {date}',
+  'common.retry': 'Try again',
 
   'push.enable': 'Turn on notifications',
   'push.enabled': 'Notifications are on',

@@ -45,6 +45,7 @@ export const cs: Dict = {
   'review.storeComment': 'Komentář prodejny',
 
   'common.deadline': 'Termín {date}',
+  'common.retry': 'Zkusit znovu',
 
   'push.enable': 'Zapnout oznámení',
   'push.enabled': 'Oznámení jsou zapnutá',
