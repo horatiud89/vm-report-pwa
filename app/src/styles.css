@@ -528,6 +528,21 @@ h2 {
 .zone-square {
   width: 24px;
   height: 24px;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* The square whose name is shown in the caption */
+.zone-square[aria-pressed='true'] {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.zone-caption {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 /* Primary action pinned to the bottom of the screen (New report, Send) */

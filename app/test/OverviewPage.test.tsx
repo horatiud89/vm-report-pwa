@@ -116,16 +116,16 @@ describe('OverviewPage: a store card', () => {
 describe('OverviewPage: zone grid', () => {
   test('one square per zone of the report, in groups named by department, in the store order', () => {
     renderOverview();
-    expect(screen.getAllByRole('img')).toHaveLength(Object.keys(SUMMARY).length); // zones the report has, no more
+    expect(screen.getAllByRole('button')).toHaveLength(Object.keys(SUMMARY).length); // zones the report has, no more
     const women = screen.getByRole('group', { name: "WOMEN'S DEPARTMENT" });
-    expect(within(women).getAllByRole('img').map((s) => s.getAttribute('aria-label'))).toEqual([
+    expect(within(women).getAllByRole('button').map((s) => s.getAttribute('aria-label'))).toEqual([
       "Women's Image: Overdue",
       "Women's Wall 1: Needs correction",
       "Women's Wall 2: Approved",
       "Women's Table 1: Approved",
       "Women's Table 2: Approved",
     ]);
-    expect(within(screen.getByRole('group', { name: "MEN'S DEPARTMENT" })).getAllByRole('img')).toHaveLength(2);
+    expect(within(screen.getByRole('group', { name: "MEN'S DEPARTMENT" })).getAllByRole('button')).toHaveLength(2);
     expect(screen.queryByRole('group', { name: 'HOME' })).not.toBeInTheDocument(); // no zone of it in this report
   });
 
@@ -139,17 +139,55 @@ describe('OverviewPage: zone grid', () => {
     expect(BADGE_STYLE.overdue.backgroundColor).not.toBe(BADGE_STYLE.needs_correction.backgroundColor);
   });
 
+  test('pressing a square shows its zone and status in a caption, pressing it again or another square changes it', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderOverview();
+    const c = card(/850 Palladium Praha/);
+    const image = screen.getByRole('button', { name: "Women's Image: Overdue" });
+    const wall = screen.getByRole('button', { name: "Women's Wall 1: Needs correction" });
+    expect(within(c).queryByRole('status')).not.toBeInTheDocument();
+    expect(image).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(image);
+    expect(within(c).getByRole('status')).toHaveTextContent("Women's Image: Overdue");
+    expect(image).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(wall);
+    expect(within(c).getByRole('status')).toHaveTextContent("Women's Wall 1: Needs correction");
+    expect(image).toHaveAttribute('aria-pressed', 'false');
+    expect(wall).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(wall);
+    expect(within(c).queryByRole('status')).not.toBeInTheDocument();
+    expect(wall).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('the grid is outside the card link, so pressing a square never opens the report', () => {
+    renderOverview();
+    const squares = screen.getAllByRole('button');
+    expect(squares.length).toBeGreaterThan(0);
+    for (const square of squares) expect(square.closest('a')).toBeNull();
+  });
+
+  test('each card keeps its own caption', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderOverview('head_vm', [NEWER_850, NEWER_120]);
+    await user.click(within(card(/120 Nový Smíchov/)).getByRole('button', { name: "Women's Image: Submitted" }));
+    expect(within(card(/120 Nový Smíchov/)).getByRole('status')).toHaveTextContent("Women's Image: Submitted");
+    expect(within(card(/850 Palladium Praha/)).queryByRole('status')).not.toBeInTheDocument();
+  });
+
   test('squares are named in the user language', () => {
     hooks.useSentReports.mockReturnValue(live([NEWER_850]));
     renderApp(<OverviewPage />, { session: signedIn('head_vm', 'ro') });
-    expect(screen.getByLabelText("Women's Image: Termen depășit")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: "Women's Image: Termen depășit" })).toBeInTheDocument();
   });
 
   test('without the store definition the card still shows, with no grid', () => {
     hooks.useStore.mockReturnValue({ data: null, loading: true, error: null });
     renderOverview();
     expect(screen.getByRole('link', { name: /850 Palladium Praha/ })).toBeInTheDocument();
-    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });
 
@@ -183,6 +221,14 @@ describe('OverviewPage: country filter', () => {
     renderOverview(role);
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(hooks.useSentReports).toHaveBeenLastCalledWith(expect.objectContaining({ role, country: 'CZ' }), 'all');
+  });
+
+  test.each(['avm', 'am'] as const)('a country remembered from a Head of VM or Director session cannot widen the scope of %s', (role) => {
+    localStorage.setItem('vm-review-country', 'RO');
+    renderOverview(role);
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(hooks.useSentReports).toHaveBeenLastCalledWith(expect.objectContaining({ role, country: 'CZ' }), 'all');
+    expect(hooks.useSentReports).not.toHaveBeenCalledWith(expect.anything(), 'RO');
   });
 
   test('uses the country remembered by the report list, and what is picked here is remembered for it', async () => {

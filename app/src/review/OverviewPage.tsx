@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { stateLabel } from '@shared/i18n';
 import { countStates } from '@shared/status';
@@ -91,33 +92,54 @@ function StoreCard({ report, now }: { report: ReportDoc; now: number }) {
 }
 
 /**
- * Every zone of the report as a small square in its status colour, grouped by department. The zone name and
- * status are in the title (shown on long-press or hover) and the label. The grid is not part of the card's
- * link, so pressing a square shows its name instead of leaving for the report.
+ * Every zone of the report as a small square in its status colour, grouped by department. Touch screens show
+ * no title tooltips, so a square is a button: pressing it shows "zone name: status" in a caption under the grid
+ * (press it again to clear). The title and label carry the same text. The grid is not part of the card's link,
+ * so pressing a square never leaves for the report.
  */
 function ZoneGrid({ report, now }: { report: ReportDoc; now: number }) {
   const { lang } = useT();
   const store = useStore(report.storeId);
+  const [selected, setSelected] = useState<string | null>(null);
   if (!store.data) return null;
 
+  const departments = store.data.departments
+    .map((department) => ({
+      ...department,
+      squares: department.zones.flatMap((zone) => {
+        const summary = report.zoneSummary[zone.id];
+        if (!summary) return [];
+        const state: BadgeState = shownState(summary.state, summary.deadline, report.timezone, now);
+        return [{ id: zone.id, state, label: `${zone.name}: ${stateLabel(lang, state)}` }];
+      }),
+    }))
+    .filter((department) => department.squares.length > 0);
+  const caption = departments.flatMap((d) => d.squares).find((square) => square.id === selected)?.label;
+
   return (
-    <div className="zone-departments">
-      {store.data.departments.map((department) => {
-        const squares = department.zones.flatMap((zone) => {
-          const summary = report.zoneSummary[zone.id];
-          if (!summary) return [];
-          const state: BadgeState = shownState(summary.state, summary.deadline, report.timezone, now);
-          const label = `${zone.name}: ${stateLabel(lang, state)}`;
-          return [<span key={zone.id} role="img" className="zone-square" style={BADGE_STYLE[state]} title={label} aria-label={label} />];
-        });
-        if (squares.length === 0) return null;
-        return (
+    <>
+      <div className="zone-departments">
+        {departments.map((department) => (
           <div key={department.id} role="group" aria-label={department.name} className="zone-department">
             <span className="zone-department-name" aria-hidden="true">{department.name}</span>
-            <div className="zone-grid">{squares}</div>
+            <div className="zone-grid">
+              {department.squares.map((square) => (
+                <button
+                  key={square.id}
+                  type="button"
+                  className="zone-square"
+                  style={BADGE_STYLE[square.state]}
+                  title={square.label}
+                  aria-label={square.label}
+                  aria-pressed={square.id === selected}
+                  onClick={() => setSelected(square.id === selected ? null : square.id)}
+                />
+              ))}
+            </div>
           </div>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+      {caption && <p role="status" className="zone-caption">{caption}</p>}
+    </>
   );
 }
