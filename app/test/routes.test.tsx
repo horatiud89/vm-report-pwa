@@ -9,16 +9,19 @@ import type { Session } from '../src/auth/AuthProvider';
 vi.mock('firebase/auth', () => ({ signInWithEmailAndPassword: vi.fn(), sendPasswordResetEmail: vi.fn() }));
 vi.mock('firebase/firestore', () => ({ doc: vi.fn(), updateDoc: vi.fn() }));
 vi.mock('../src/firebase', () => ({ auth: {}, db: {} }));
-vi.mock('../src/api', () => ({ createDraft: vi.fn(), updateDraftZone: vi.fn(), sendReport: vi.fn() }));
+vi.mock('../src/api', () => ({ createDraft: vi.fn(), updateDraftZone: vi.fn(), sendReport: vi.fn(), sendCorrection: vi.fn() }));
+// What the mocked report is: a draft, or sent with its zone waiting for a correction.
+const shown = vi.hoisted(() => ({ sent: false }));
 // The store screens read live data; here they get fixed reports and zones so that routing alone is tested.
 vi.mock('../src/data/hooks', async () => {
   const fixtures = await import('./fixtures');
   const { STORE_850: store } = await import('@shared/store850');
   return {
     useStoreReports: () => fixtures.live([fixtures.makeReport({ campaignName: 'Autumn 2026', status: 'sent', sentAt: 5 })]),
-    useReport: () => fixtures.live(fixtures.makeReport({ campaignName: 'Autumn 2026' })),
+    useReport: () => fixtures.live(fixtures.makeReport({ campaignName: 'Autumn 2026', ...(shown.sent ? { status: 'sent', sentAt: 5 } : {}) })),
     useZones: () => fixtures.live(fixtures.allZoneDocs()),
-    useZone: () => fixtures.live(fixtures.makeZone('women-image')),
+    useZone: () => fixtures.live(fixtures.makeZone('women-image', shown.sent ? { state: 'needs_correction' } : {})),
+    useFeedback: () => fixtures.live([]),
     useStore: () => fixtures.live(store),
     usePhotoUrl: () => null,
   };
@@ -128,6 +131,19 @@ describe('store routes', () => {
     renderApp(<AppRoutes />, { session: signedIn('store'), route: '/r/r1/z/women-image' });
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Women's Image");
     expect(screen.getByRole('button', { name: en['store.takePhoto'] })).toBeInTheDocument();
+  });
+
+  test('/r/:reportId/z/:zoneId of a sent report shows the correction screen, not the editor', () => {
+    shown.sent = true;
+    try {
+      renderApp(<AppRoutes />, { session: signedIn('store'), route: '/r/r1/z/women-image' });
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Women's Image");
+      expect(screen.getByRole('button', { name: en['store.sendCorrection'] })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: en['store.takePhoto'] })).toBeInTheDocument(); // the picker for the new photos
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument(); // the editor's "not part of this campaign" mark
+    } finally {
+      shown.sent = false;
+    }
   });
 
   test.each(['/new', '/r/r1', '/r/r1/z/women-image'])('reviewers are sent home from %s (their screens come later)', (route) => {

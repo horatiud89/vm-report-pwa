@@ -36,6 +36,8 @@ export const en = {
   'store.saving': 'Saving…',
   'store.saved': 'Saved',
   'store.sent': 'Report sent.',
+  'store.newPhotos': 'New photos',
+  'store.version': 'Version {n}',
 
   'review.new': 'New',
   'review.allCountries': 'All countries',

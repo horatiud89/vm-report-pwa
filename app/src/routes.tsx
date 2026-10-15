@@ -1,10 +1,12 @@
 import type { ReactElement } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ROLE_LABEL } from '@shared/access';
 import { useSession } from './auth/AuthProvider';
 import { LoginPage } from './auth/LoginPage';
 import { ResetPage } from './auth/ResetPage';
+import { useReport } from './data/hooks';
 import { useT } from './i18n/I18nProvider';
+import { CorrectionPage } from './store/CorrectionPage';
 import { DraftReportPage } from './store/DraftReportPage';
 import { DraftZonePage } from './store/DraftZonePage';
 import { NewReportPage } from './store/NewReportPage';
@@ -71,6 +73,15 @@ function StoreOnly({ children }: { children: ReactElement }) {
   return claims?.role === 'store' ? children : <Navigate to="/" replace />;
 }
 
+/** A zone of the store's report: edited while the report is a draft, then its feedback and corrections. */
+function StoreZoneRoute() {
+  const { reportId = '' } = useParams();
+  const report = useReport(reportId);
+  if (report.loading) return <Loading />;
+  // A missing report or a failed read is handled by the draft zone screen, which sends the user back.
+  return report.data?.status === 'sent' ? <CorrectionPage /> : <DraftZonePage />;
+}
+
 function HomeRoute() {
   const { claims } = useSession();
   return claims?.role === 'store' ? <StoreHome /> : <HomeShell />;
@@ -85,7 +96,7 @@ export function AppRoutes() {
         <Route path="/" element={<HomeRoute />} />
         <Route path="/new" element={<StoreOnly><NewReportPage /></StoreOnly>} />
         <Route path="/r/:reportId" element={<StoreOnly><DraftReportPage /></StoreOnly>} />
-        <Route path="/r/:reportId/z/:zoneId" element={<StoreOnly><DraftZonePage /></StoreOnly>} />
+        <Route path="/r/:reportId/z/:zoneId" element={<StoreOnly><StoreZoneRoute /></StoreOnly>} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

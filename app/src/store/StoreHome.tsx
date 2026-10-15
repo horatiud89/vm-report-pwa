@@ -1,16 +1,15 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDayMonth, isOverdue } from '@shared/dates';
-import type { Lang, ReportDoc } from '@shared/types';
+import type { ReportDoc } from '@shared/types';
 import { useSession } from '../auth/AuthProvider';
 import { useStore, useStoreReports } from '../data/hooks';
+import { formatDate } from '../i18n/formatDate';
 import { useT } from '../i18n/I18nProvider';
 import { APP_TITLE } from '../ui/Layout';
 import { Loading } from '../ui/Loading';
 import { StatusBadge } from '../ui/StatusBadge';
 import { reportStatusLabel } from './reportStatusLabel';
 import { useOpenDraft } from './useOpenDraft';
-
-const DATE_LOCALE: Record<Lang, string> = { en: 'en-GB', cs: 'cs-CZ', sk: 'sk-SK', ro: 'ro-RO' };
 
 interface Correction {
   reportId: string;
@@ -58,8 +57,7 @@ export function StoreHome() {
 
   const draft = reports.data.find((r) => r.status === 'draft');
   const newReport = () => (draft ? openDraft(draft.id) : navigate('/new'));
-  const reportDate = (r: ReportDoc) => new Date(r.sentAt ?? r.createdAt)
-    .toLocaleDateString(DATE_LOCALE[lang], { timeZone: r.timezone, day: 'numeric', month: 'short', year: 'numeric' });
+  const reportDate = (r: ReportDoc) => formatDate(lang, r.sentAt ?? r.createdAt, r.timezone);
 
   return (
     <>

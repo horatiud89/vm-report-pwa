@@ -37,6 +37,8 @@ export const sk: Dict = {
   'store.saving': 'Ukladanie…',
   'store.saved': 'Uložené',
   'store.sent': 'Report bol odoslaný.',
+  'store.newPhotos': 'Nové fotky',
+  'store.version': 'Verzia {n}',
 
   'review.new': 'Nový',
   'review.allCountries': 'Všetky krajiny',

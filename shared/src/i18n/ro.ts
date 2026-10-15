@@ -38,6 +38,8 @@ export const ro: Dict = {
   'store.saving': 'Se salvează…',
   'store.saved': 'Salvat',
   'store.sent': 'Raportul a fost trimis.',
+  'store.newPhotos': 'Poze noi',
+  'store.version': 'Versiunea {n}',
 
   'review.new': 'Nou',
   'review.allCountries': 'Toate țările',

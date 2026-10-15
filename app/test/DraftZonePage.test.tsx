@@ -546,17 +546,9 @@ describe('DraftZonePage: navigation and states', () => {
 });
 
 describe('DraftZonePage: sent report', () => {
-  test('shows photos, comment and status read-only, with nothing to edit', () => {
-    const sent = makeReport({ status: 'sent', sentAt: 5 });
-    const { container } = renderZone(zoneWith([photo(1), photo(2)], { state: 'submitted' }, 'Wall done'), sent);
-
-    expect(screen.getAllByRole('img')).toHaveLength(2);
-    expect(screen.getByText('Wall done')).toBeInTheDocument();
-    expect(screen.getByText(en['state.submitted'])).toBeInTheDocument();
+  test('is not an editor any more: a sent report goes back to its page (zones there open the correction screen)', () => {
+    renderZone(zoneWith([photo(1)], { state: 'submitted' }), makeReport({ status: 'sent', sentAt: 5 }));
+    expect(screen.getByTestId('where')).toHaveTextContent(/^\/r\/r1$/);
     expect(screen.queryByLabelText(en['store.comment'])).not.toBeInTheDocument();
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: en['store.takePhoto'] })).not.toBeInTheDocument();
-    expect(removeButtons()).toHaveLength(0);
-    expect(container.querySelector('input[type="file"]')).toBeNull();
   });
 });

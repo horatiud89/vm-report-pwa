@@ -596,3 +596,78 @@ h2 {
 .comment-text {
   white-space: pre-wrap;
 }
+
+/* Photo with the reviewer's circles: the photo keeps its proportions, the svg covers exactly the photo */
+.photo-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.photo-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.photo-frame svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.photo-wait {
+  aspect-ratio: 3 / 4;
+}
+
+/* Feedback on a photo and the history of a zone */
+h3 {
+  margin: 16px 0 4px;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.feedback-item {
+  margin-bottom: 24px;
+}
+
+.feedback-note {
+  margin: 8px 0 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.feedback-note p {
+  margin: 0 0 8px;
+}
+
+.feedback-note p:last-child {
+  margin-bottom: 0;
+}
+
+.feedback-author {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+}
+
+.feedback-author .muted {
+  margin-left: auto;
+}
+
+.feedback-deadline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  font-weight: 600;
+}
+
+.feedback-deadline.is-overdue {
+  color: #8e0000;
+  font-weight: 700;
+}

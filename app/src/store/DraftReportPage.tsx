@@ -1,8 +1,7 @@
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { isOverdue } from '@shared/dates';
 import { canSend } from '@shared/status';
-import type { ReportDoc, ZoneDoc } from '@shared/types';
+import type { ZoneDoc } from '@shared/types';
 import { sendReport } from '../api';
 import { useReport, useStore, useZones } from '../data/hooks';
 import { useT } from '../i18n/I18nProvider';
@@ -10,12 +9,8 @@ import { Loading } from '../ui/Loading';
 import { StatusBadge } from '../ui/StatusBadge';
 import { useToast } from '../ui/Toast';
 import { reportStatusLabel } from './reportStatusLabel';
+import { badgeState } from './zoneBadge';
 import { reportSaveState, retryFailedSaves, subscribeSessions } from './zoneSession';
-
-/** The state shown for a zone: a correction past its deadline reads Overdue. */
-function badgeState(zone: ZoneDoc, report: ReportDoc, now: number): ZoneDoc['state'] | 'overdue' {
-  return zone.state === 'needs_correction' && isOverdue(zone.earliestOpenDeadline, now, report.timezone) ? 'overdue' : zone.state;
-}
 
 /**
  * The report's zones by department. A draft is edited zone by zone and sent from here; a sent report shows the

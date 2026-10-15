@@ -6,7 +6,6 @@ import { useT } from '../i18n/I18nProvider';
 import { PhotoPicker } from '../photos/PhotoPicker';
 import { PhotoThumb } from '../photos/PhotoThumb';
 import { Loading } from '../ui/Loading';
-import { StatusBadge } from '../ui/StatusBadge';
 import { useToast } from '../ui/Toast';
 import { sessionFor } from './zoneSession';
 
@@ -20,12 +19,10 @@ export function DraftZonePage() {
 
   if (report.loading || zone.loading) return <Loading />;
   if (report.error || zone.error) return <p role="alert">{t('error.generic')}</p>;
-  // No such zone (or report): the report page decides where to go next.
-  if (!report.data || !zone.data) return <Navigate to={`/r/${reportId}`} replace />;
+  // No such zone (or report), or a report that has been sent (its zones have the correction screen): the report page decides where to go next.
+  if (!report.data || !zone.data || report.data.status !== 'draft') return <Navigate to={`/r/${reportId}`} replace />;
 
-  return report.data.status === 'draft'
-    ? <ZoneEditor key={`${report.data.id}/${zone.data.id}`} report={report.data} zone={zone.data} />
-    : <ZoneReadOnly report={report.data} zone={zone.data} />;
+  return <ZoneEditor key={`${report.data.id}/${zone.data.id}`} report={report.data} zone={zone.data} />;
 }
 
 /**
@@ -113,33 +110,6 @@ function ZoneEditor({ report, zone }: { report: ReportDoc; zone: ZoneDoc }) {
         />
         <span>{t('store.notInCampaign')}</span>
       </label>
-    </>
-  );
-}
-
-/** A zone of a sent report: what was sent, nothing to edit (corrections come with their own screen). */
-function ZoneReadOnly({ report, zone }: { report: ReportDoc; zone: ZoneDoc }) {
-  const { t } = useT();
-  const sent = zone.versions.at(-1);
-  return (
-    <>
-      <Link to={`/r/${report.id}`} className="back-link">{t('common.back')}</Link>
-      <h1>{zone.name}</h1>
-      <p className="muted">{report.campaignName}</p>
-      <p><StatusBadge state={zone.state} /></p>
-      {sent && sent.photos.length > 0 && (
-        <div className="thumbs">
-          {sent.photos.map((photo, index) => (
-            <PhotoThumb key={photo.path} photo={photo} alt={t('store.photo', { n: index + 1 })} />
-          ))}
-        </div>
-      )}
-      {sent?.storeComment && (
-        <>
-          <h2>{t('review.storeComment')}</h2>
-          <p className="comment-text">{sent.storeComment}</p>
-        </>
-      )}
     </>
   );
 }
