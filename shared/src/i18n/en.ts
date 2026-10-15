@@ -1,0 +1,80 @@
+/** Source of every UI and push text key. `{name}` placeholders are filled by `t`. */
+export const en = {
+  'login.title': 'Sign in',
+  'login.email': 'Email',
+  'login.password': 'Password',
+  'login.submit': 'Sign in',
+  'login.reset': 'Set / forgot password',
+  'reset.sent': 'Check your email for the link to set your password.',
+
+  'nav.home': 'Reports',
+  'nav.overview': 'Overview',
+  'nav.settings': 'Settings',
+  'settings.language': 'Language',
+  'settings.logout': 'Log out',
+
+  'store.newReport': 'New report',
+  'store.campaignName': 'Campaign name',
+  'store.correctionsToDo': 'Corrections to do',
+  'store.takePhoto': 'Take photo',
+  'store.choosePhoto': 'Choose from gallery',
+  'store.addPhoto': 'Add photo ({n}/3)',
+  'store.comment': 'Comment (optional)',
+  'store.notInCampaign': 'Not part of this campaign',
+  'store.send': 'Send',
+  'store.sendHint': 'Every zone needs a photo or the “Not part of this campaign” mark.',
+  'store.sendCorrection': 'Send correction',
+  'store.draftExists': 'You already have a draft report.',
+
+  'review.new': 'New',
+  'review.allCountries': 'All countries',
+  'review.feedback': 'Feedback',
+  'review.markOnPhoto': 'Mark on photo',
+  'review.undo': 'Undo',
+  'review.deadline': 'Deadline',
+  'review.sendFeedback': 'Send feedback',
+  'review.approve': 'Approve',
+  'review.approveAll': 'Approve all without feedback',
+  'review.before': 'Before',
+  'review.after': 'After',
+  'review.exportPdf': 'Export PDF',
+  'review.storeComment': 'Store comment',
+
+  'common.deadline': 'Deadline {date}',
+
+  'push.enable': 'Turn on notifications',
+  'push.enabled': 'Notifications are on',
+  'install.iosTitle': 'Add the app to your Home Screen',
+  'install.iosStep1': 'Tap the Share button in Safari',
+  'install.iosStep2': 'Choose “Add to Home Screen”',
+  'install.iosStep3': 'Open the app from your Home Screen and sign in',
+  'install.android': 'Install app',
+
+  'error.generic': 'Something went wrong. Try again.',
+  'error.noAccess': 'This account is not set up for the app.',
+
+  'state.empty': 'Empty',
+  'state.photo_added': 'Photo added',
+  'state.not_in_campaign': 'Not part of this campaign',
+  'state.submitted': 'Submitted',
+  'state.needs_correction': 'Needs correction',
+  'state.overdue': 'Overdue',
+  'state.correction_sent': 'Correction sent',
+  'state.approved': 'Approved',
+
+  'report.draft': 'Draft',
+  'report.sent': 'Sent',
+  'report.corrections_open': 'Corrections open ({n})',
+  'report.approved': 'Approved',
+
+  'push.reportSent': '{store} sent a report: {campaign}',
+  'push.feedback': 'Feedback: {zone} — deadline {date}',
+  'push.correctionSent': '{store} sent a correction: {zone}',
+  'push.zoneApproved': 'Approved: {zone}',
+  'push.allApproved': '{campaign}: {n} zones approved',
+  'push.reminderDayBefore': 'Reminder: {zone} — deadline tomorrow ({date})',
+  'push.reminderOverdue': 'Overdue: {zone} — deadline was {date}',
+} as const;
+
+export type MsgKey = keyof typeof en;
+export type Dict = Record<MsgKey, string>;
