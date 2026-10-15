@@ -1,4 +1,5 @@
 import { HttpsError } from 'firebase-functions/https';
+import * as logger from 'firebase-functions/logger';
 import { MAX_PHOTOS, TransitionError, nextState, type ZoneAction } from '@shared/status';
 import type { PhotoRef, ReportDoc, ZoneState } from '@shared/types';
 import type { Caller } from './caller';
@@ -58,7 +59,7 @@ export async function notifyAfterCommit(d: Deps, event: PushEvent): Promise<void
   try {
     await d.notifier.notify(event);
   } catch (e) {
-    console.error(`notification '${event.kind}' failed`, e);
+    logger.error(`notification '${event.kind}' failed`, e);
   }
 }
 

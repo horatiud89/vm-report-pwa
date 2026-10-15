@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { FunctionsErrorCode } from 'firebase-functions/https';
+import { error as logError } from 'firebase-functions/logger';
 import type { FeedbackDoc, PhotoRef, ReportDoc, ZoneDoc } from '@shared/types';
 import { createDraft } from '../src/draft';
 import { approveAllWithoutFeedback, approveZone, giveFeedback, sendCorrection } from '../src/review';
@@ -7,6 +8,8 @@ import {
   NOW, ZONE_IDS, avmCz, avmSk, createSentReport, director, headVm, otherStoreCaller, photoPath, putPhoto, resetData, seedStore850,
   storeCaller, testDeps,
 } from './helpers';
+
+vi.mock('firebase-functions/logger');
 
 const d = testDeps();
 const ZONE = 'women-image';
@@ -298,11 +301,10 @@ describe('giveFeedback', () => {
 
   test('a notifier failure after the commit does not fail the call', async () => {
     const reportId = await sentReport();
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(logError).mockClear();
     const failing = { ...d, notifier: { notify: () => Promise.reject(new Error('push down')) } };
     await giveFeedback(avmCz, feedbackArgs(reportId), failing);
-    expect(error).toHaveBeenCalledOnce();
-    error.mockRestore();
+    expect(logError).toHaveBeenCalledOnce();
     expect((await getZone(reportId, ZONE)).state).toBe('needs_correction');
   });
 });

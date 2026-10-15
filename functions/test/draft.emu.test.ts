@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { FunctionsErrorCode } from 'firebase-functions/https';
+import { error as logError } from 'firebase-functions/logger';
 import { MAX_PHOTOS } from '@shared/status';
 import type { PhotoRef, ReportDoc, ZoneDoc } from '@shared/types';
 import { createDraft, markSeen, sendReport, updateDraftZone } from '../src/draft';
@@ -7,6 +8,8 @@ import {
   NOW, ZONE_IDS, avmCz, avmSk, director, headVm, otherStoreCaller, photoPath, putPhoto, resetData, seedStore850,
   storeCaller, testDeps,
 } from './helpers';
+
+vi.mock('firebase-functions/logger');
 
 const d = testDeps();
 const CAMPAIGN = 'Autumn 2026';
@@ -290,11 +293,10 @@ describe('sendReport', () => {
   test('a notifier failure after the commit does not fail the send', async () => {
     const reportId = await draft();
     await fillAllZones(reportId);
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(logError).mockClear();
     const failing = { ...d, notifier: { notify: () => Promise.reject(new Error('push down')) } };
     await sendReport(storeCaller, { reportId }, failing);
-    expect(error).toHaveBeenCalledOnce();
-    error.mockRestore();
+    expect(logError).toHaveBeenCalledOnce();
     expect((await getReport(reportId)).status).toBe('sent');
   });
 
