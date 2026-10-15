@@ -118,6 +118,11 @@ main.content {
   padding-top: calc(var(--safe-top) + 8px);
 }
 
+/* iPhone Safari: the install steps between the title and the sign-in form */
+.auth-page .banner {
+  margin: 0 0 24px;
+}
+
 .field {
   display: block;
   margin-bottom: 16px;
