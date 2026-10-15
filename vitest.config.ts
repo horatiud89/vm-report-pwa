@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 const sharedAlias = { '@shared': fileURLToPath(new URL('./shared/src', import.meta.url)) };
@@ -14,6 +15,17 @@ export default defineConfig({
       {
         resolve: { alias: sharedAlias },
         test: { name: 'functions', environment: 'node', include: ['functions/test/**/*.test.ts'], exclude },
+      },
+      {
+        plugins: [react()],
+        resolve: { alias: sharedAlias },
+        test: {
+          name: 'app',
+          environment: 'jsdom',
+          include: ['app/test/**/*.test.{ts,tsx}'],
+          exclude,
+          setupFiles: ['app/test/setup.ts'],
+        },
       },
     ],
   },

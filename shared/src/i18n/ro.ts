@@ -7,7 +7,10 @@ export const ro: Dict = {
   'login.password': 'Parolă',
   'login.submit': 'Intră în cont',
   'login.reset': 'Setează sau resetează parola',
+  'login.error': 'Email sau parolă greșite.',
   'reset.sent': 'Verifică-ți emailul: ți-am trimis linkul pentru setarea parolei.',
+  'reset.submit': 'Trimite linkul',
+  'reset.back': 'Înapoi la autentificare',
 
   'nav.home': 'Rapoarte',
   'nav.overview': 'Panou general',

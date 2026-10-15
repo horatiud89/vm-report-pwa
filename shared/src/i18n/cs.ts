@@ -6,7 +6,10 @@ export const cs: Dict = {
   'login.password': 'Heslo',
   'login.submit': 'Přihlásit se',
   'login.reset': 'Nastavit nebo obnovit heslo',
+  'login.error': 'Nesprávný e-mail nebo heslo.',
   'reset.sent': 'Odkaz pro nastavení hesla najdete v e-mailu.',
+  'reset.submit': 'Odeslat odkaz',
+  'reset.back': 'Zpět na přihlášení',
 
   'nav.home': 'Reporty',
   'nav.overview': 'Přehled',

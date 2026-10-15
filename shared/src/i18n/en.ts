@@ -5,7 +5,10 @@ export const en = {
   'login.password': 'Password',
   'login.submit': 'Sign in',
   'login.reset': 'Set / forgot password',
+  'login.error': 'Wrong email or password.',
   'reset.sent': 'Check your email for the link to set your password.',
+  'reset.submit': 'Send link',
+  'reset.back': 'Back to sign in',
 
   'nav.home': 'Reports',
   'nav.overview': 'Overview',

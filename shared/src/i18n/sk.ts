@@ -6,7 +6,10 @@ export const sk: Dict = {
   'login.password': 'Heslo',
   'login.submit': 'Prihlásiť sa',
   'login.reset': 'Nastaviť alebo obnoviť heslo',
+  'login.error': 'Nesprávny e-mail alebo heslo.',
   'reset.sent': 'Odkaz na nastavenie hesla nájdete v e-maile.',
+  'reset.submit': 'Odoslať odkaz',
+  'reset.back': 'Späť na prihlásenie',
 
   'nav.home': 'Reporty',
   'nav.overview': 'Prehľad',

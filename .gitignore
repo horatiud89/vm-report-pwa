@@ -1,7 +1,9 @@
 node_modules
 dist
-lib
+functions/lib
 functions/.env*
+.env*
+!.env.example
 *.log
 .firebase/
 service-account*.json
