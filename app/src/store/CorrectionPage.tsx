@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import type { FeedbackDoc, ReportDoc, ZoneDoc } from '@shared/types';
 import { useFeedback, useReport, useZone } from '../data/hooks';
@@ -25,9 +25,22 @@ const newestFirst = (a: FeedbackDoc, b: FeedbackDoc) => b.createdAt - a.createdA
 export function CorrectionPage() {
   const { reportId = '', zoneId = '' } = useParams();
   const { t } = useT();
+  const navigate = useNavigate();
   const report = useReport(reportId);
   const zone = useZone(reportId, zoneId);
   const feedback = useFeedback(reportId, zoneId);
+
+  // The zone this screen shows, null once it is closed. A sent correction goes home only while its zone is still on
+  // screen. This page decides, not the form: the zone's new state often arrives before the answer to the send and
+  // replaces the form with the history, and the store must land on the home screen either way.
+  const showing = useRef<string | null>(null);
+  useEffect(() => {
+    showing.current = `${reportId}/${zoneId}`;
+    return () => { showing.current = null; };
+  }, [reportId, zoneId]);
+  const sent = useCallback((key: string) => {
+    if (showing.current === key) navigate('/');
+  }, [navigate]);
 
   if (report.loading || zone.loading || feedback.loading) return <Loading />;
   if (report.error || zone.error || feedback.error) return <p role="alert">{t('error.generic')}</p>;
@@ -36,7 +49,7 @@ export function CorrectionPage() {
 
   return zone.data.state === 'needs_correction'
     // A new round of feedback (one more version) starts a new form.
-    ? <CorrectionForm key={`${report.data.id}/${zone.data.id}/${zone.data.versions.length}`} report={report.data} zone={zone.data} feedback={feedback.data} />
+    ? <CorrectionForm key={`${report.data.id}/${zone.data.id}/${zone.data.versions.length}`} report={report.data} zone={zone.data} feedback={feedback.data} onSent={sent} />
     : <ZoneHistory report={report.data} zone={zone.data} feedback={feedback.data} />;
 }
 
@@ -44,10 +57,15 @@ export function CorrectionPage() {
  * The open feedback under the photo it refers to, and below it the new photos and the comment. The new photos
  * and the comment live in a session (correctionSession.ts) that keeps uploads going when this screen is left.
  */
-function CorrectionForm({ report, zone, feedback }: { report: ReportDoc; zone: ZoneDoc; feedback: FeedbackDoc[] }) {
+function CorrectionForm({ report, zone, feedback, onSent }: {
+  report: ReportDoc;
+  zone: ZoneDoc;
+  feedback: FeedbackDoc[];
+  /** Called with `reportId/zoneId` once the correction is accepted, also when this form is gone by then. */
+  onSent: (key: string) => void;
+}) {
   const { t } = useT();
   const toast = useToast();
-  const navigate = useNavigate();
   const ids = useId();
   // The session is fixed for this screen (the page keys the form by report, zone and round).
   const [session] = useState(() => correctionSessionFor(report, zone));
@@ -60,12 +78,6 @@ function CorrectionForm({ report, zone, feedback }: { report: ReportDoc; zone: Z
     errorsSeen.current = errors;
   }, [errors, toast, t]);
 
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => { mounted.current = false; };
-  }, []);
-
   const latest = zone.versions.at(-1);
   const open = feedback.filter((f) => f.status === 'open' && f.version === latest?.n).sort(newestFirst);
   const photoCount = photos.length + uploads.length;
@@ -74,7 +86,7 @@ function CorrectionForm({ report, zone, feedback }: { report: ReportDoc; zone: Z
   async function send() {
     if (!(await session.send())) return;
     toast(t('state.correction_sent'));
-    if (mounted.current) navigate('/');
+    onSent(`${report.id}/${zone.id}`);
   }
 
   return (

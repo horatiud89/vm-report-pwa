@@ -1,10 +1,12 @@
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useSyncExternalStore } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { en } from '@shared/i18n/en';
 import type { FeedbackDoc, PhotoRef, ReportDoc, ZoneDoc, ZoneState } from '@shared/types';
 import * as api from '../src/api';
+import type { Live } from '../src/data/hooks';
 import * as compress from '../src/photos/compress';
 import { CorrectionPage } from '../src/store/CorrectionPage';
 import { clearCorrectionSessions } from '../src/store/correctionSession';
@@ -49,11 +51,12 @@ function zone(over: Partial<ZoneDoc> = {}): ZoneDoc {
 }
 
 function renderPage(
-  { z = zone(), feedbacks = [feedback()], report = makeReport({ status: 'sent', sentAt: 5 }) }:
-  { z?: ZoneDoc | null; feedbacks?: FeedbackDoc[]; report?: ReportDoc | null } = {},
+  { z = zone(), feedbacks = [feedback()], report = makeReport({ status: 'sent', sentAt: 5 }), useZone }:
+  { z?: ZoneDoc | null; feedbacks?: FeedbackDoc[]; report?: ReportDoc | null; useZone?: () => Live<ZoneDoc | null> } = {},
 ) {
   hooks.useReport.mockReturnValue(live(report));
-  hooks.useZone.mockReturnValue(live(z));
+  if (useZone) hooks.useZone.mockImplementation(useZone);
+  else hooks.useZone.mockReturnValue(live(z));
   hooks.useFeedback.mockReturnValue(live(feedbacks));
   return renderApp(
     <>
@@ -337,6 +340,60 @@ describe('CorrectionPage: sending the correction', () => {
 
     await act(async () => finish());
     await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent(/^\/$/));
+  });
+
+  test('goes home also when the zone shows the sent correction before the answer arrives', async () => {
+    vi.mocked(compress.uploadZonePhoto).mockResolvedValue(newPhoto(1));
+    let finish!: () => void;
+    vi.mocked(api.sendCorrection).mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
+    // The zone as a live snapshot, like Firestore's: a new value renders the page again.
+    let current = zone();
+    const listeners = new Set<() => void>();
+    const { container } = renderPage({
+      useZone: () => live(useSyncExternalStore((listener) => {
+        listeners.add(listener);
+        return () => { listeners.delete(listener); };
+      }, () => current)),
+    });
+    const user = userEvent.setup();
+    await user.upload(galleryInput(container), jpeg());
+    await waitFor(() => expect(sendButton()).toBeEnabled());
+
+    await user.click(sendButton());
+    // The zone's snapshot is often quicker than the callable's answer: the screen turns into the zone's history.
+    act(() => {
+      current = zone({
+        state: 'correction_sent',
+        versions: [
+          { n: 1, photos: [photo(1), photo(2)], storeComment: 'Wall done', createdAt: 1 },
+          { n: 2, photos: [newPhoto(1)], storeComment: '', createdAt: 2 },
+        ],
+      });
+      for (const listener of listeners) listener();
+    });
+    expect(screen.queryByRole('button', { name: en['store.sendCorrection'] })).not.toBeInTheDocument();
+
+    await act(async () => finish());
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent(/^\/$/));
+    expect(screen.getByRole('status')).toHaveTextContent(en['state.correction_sent']);
+  });
+
+  test('leaving while the correction is on its way stays where the user went', async () => {
+    vi.mocked(compress.uploadZonePhoto).mockResolvedValue(newPhoto(1));
+    let finish!: () => void;
+    vi.mocked(api.sendCorrection).mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
+    const { container } = renderPage();
+    const user = userEvent.setup();
+    await user.upload(galleryInput(container), jpeg());
+    await waitFor(() => expect(sendButton()).toBeEnabled());
+
+    await user.click(sendButton());
+    await user.click(screen.getByRole('link', { name: en['common.back'] }));
+    expect(screen.getByTestId('where')).toHaveTextContent('/r/r1');
+
+    await act(async () => finish());
+    expect(screen.getByRole('status')).toHaveTextContent(en['state.correction_sent']);
+    expect(screen.getByTestId('where')).toHaveTextContent(/^\/r\/r1$/);
   });
 
   test('the comment is limited to 500 characters, like on the server', () => {
