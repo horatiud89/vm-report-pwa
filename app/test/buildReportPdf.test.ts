@@ -145,6 +145,21 @@ describe('buildReportPdf', () => {
     ]));
   });
 
+  test('labels a feedback with its version, above the author, only when it has one', () => {
+    build(report([zone({ feedback: [feedback({ version: 2, comment: 'Nové' }), feedback({ version: 1, comment: 'Staré' })] })]));
+    expect(drawn.filter((s) => s.startsWith('Version'))).toEqual(['Version 2', 'Version 1']);
+    expect(drawn.indexOf('Version 2')).toBeLessThan(drawn.indexOf('Nové'));
+    expect(drawn.indexOf('Version 2')).toBeLessThan(drawn.indexOf('Jana Nováková · Area VM'));
+
+    drawn = [];
+    build(report([zone({ feedback: [feedback(), feedback({ comment: 'Další' })] })]));
+    expect(drawn.some((s) => /version/i.test(s))).toBe(false);
+
+    drawn = [];
+    build(report([zone({ feedback: [feedback({ version: 3 })] })]), 'ro');
+    expect(drawn).toContain('Versiunea 3');
+  });
+
   test('a zone that is not in the campaign is listed with its status and no photo', () => {
     build(report([zone({ name: "Men's Image", state: 'not_in_campaign' })]));
     expect(drawn).toEqual(expect.arrayContaining(["Men's Image", 'Not part of this campaign']));
@@ -236,4 +251,27 @@ describe('buildReportPdf photos', () => {
     }
     expect(checked).toBeGreaterThan(50);
   });
+
+  test('a feedback is never split from its version label at the bottom of a page', () => {
+    let checked = 0;
+    // Filler of two line heights, in steps fine enough that the feedback starts at every position near the bottom
+    // of the first page (the label needs room for the whole feedback, not just for itself).
+    for (let lines = 27; lines < 36; lines += 1) {
+      for (let notes = 0; notes < 10; notes += 1) {
+        trace = [];
+        build(report([
+          zone({ name: 'Filler', storeComment: Array.from({ length: lines }, () => 'x').join('\n'), unavailablePhotos: Array.from({ length: notes }, (_, i) => i + 1) }),
+          zone({ name: 'Target', feedback: [feedback({ version: 2, comment: 'Jedna řádka' })] }),
+        ]));
+        trace.forEach((entry, i) => {
+          if (entry.kind !== 'text' || entry.text !== 'Version 2') return;
+          const deadline = trace.slice(i + 1).find((e) => e.kind === 'text' && e.text.startsWith('Deadline'));
+          // The deadline closes the feedback: on the same page it lies below the label, on the next page above it.
+          expect(deadline?.y, `${lines} filler lines, ${notes} notes`).toBeGreaterThan(entry.y);
+          checked += 1;
+        });
+      }
+    }
+    expect(checked).toBe(90);
+  }, 20_000);
 });

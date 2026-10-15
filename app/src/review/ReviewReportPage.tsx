@@ -82,7 +82,8 @@ export function ReviewReportPage() {
       <p className="muted">{current.campaignName} · {current.country} · {formatDate(lang, current.sentAt ?? current.createdAt, current.timezone)}</p>
       <p><span className="tag">{reportStatusLabel(t, current)}</span></p>
       <p>
-        <button type="button" className="btn btn-small" disabled={exporting} onClick={() => void exportPdf()}>
+        {/* Without the store definition the departments would read as ids (WOMEN, MEN). */}
+        <button type="button" className="btn btn-small" disabled={exporting || !store.data} onClick={() => void exportPdf()}>
           {t(exporting ? 'pdf.preparing' : 'review.exportPdf')}
         </button>
       </p>

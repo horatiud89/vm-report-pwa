@@ -260,6 +260,18 @@ describe('ReviewReportPage: export PDF', () => {
     expect(exportReport).toHaveBeenCalledTimes(2);
   });
 
+  test('is disabled while the store definition is missing, so the departments are never exported as ids', async () => {
+    hooks.useReport.mockReturnValue(live(report()));
+    hooks.useZones.mockReturnValue(live(allZoneDocs('submitted')));
+    hooks.useStore.mockReturnValue(live(null));
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderApp(<ReviewReportPage />, { session: signedIn('avm', 'en', { country: 'CZ' }) });
+
+    expect(exportPdf()).toBeDisabled();
+    await user.click(exportPdf()!);
+    expect(exportReport).not.toHaveBeenCalled();
+  });
+
   test('exporting does not block Approve all without feedback', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     vi.mocked(exportReport).mockReturnValue(new Promise<void>(() => undefined));

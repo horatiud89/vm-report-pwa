@@ -123,10 +123,11 @@ async function deliver(blob: Blob, fileName: string, title: string): Promise<voi
 }
 
 /**
- * Makes the PDF of a report and hands it to the reviewer. For every zone it reads the feedback of the current
- * (latest) version, fetches the current photos and draws the feedback's red circles on them, then builds the
- * document and shares or downloads it. A photo that cannot be loaded is named in the PDF and does not stop it;
- * anything else that fails (feedback, font, the PDF itself) rejects, so the caller can say so.
+ * Makes the PDF of a report and hands it to the reviewer. For every zone it reads all feedback (every version, newest
+ * first), fetches the current photos and draws on each the circles of the feedback given on this version (circles
+ * of an older version belong to photos that are no longer current), then builds the document and shares or downloads
+ * it. A photo that cannot be loaded is named in the PDF and does not stop it; anything else that fails (feedback,
+ * font, the PDF itself) rejects, so the caller can say so.
  * `store` only gives the department names; without it a department is shown by its id.
  */
 export async function exportReport(report: ReportDoc, zones: ZoneDoc[], lang: Lang, store: StoreDef | null = null): Promise<void> {
@@ -135,17 +136,15 @@ export async function exportReport(report: ReportDoc, zones: ZoneDoc[], lang: La
   // A zone that is not in the campaign has no photos to show; the others show their current version.
   const versionOf = (zone: ZoneDoc) => (zone.state === 'not_in_campaign' ? undefined : zone.versions.at(-1));
 
-  const feedbackOf = await Promise.all(ordered.map(async (zone) => {
-    const version = versionOf(zone);
-    if (!version) return [];
-    return (await loadFeedback(report.id, zone.id)).filter((f) => f.version === version.n);
-  }));
+  const feedbackOf = await Promise.all(ordered.map((zone) => (versionOf(zone) ? loadFeedback(report.id, zone.id) : [])));
 
   const photoJobs = ordered.flatMap((zone, zoneIndex) => (versionOf(zone)?.photos ?? []).map((photo, photoIndex) => ({
     zoneIndex,
     photoIndex,
     path: photo.path,
-    strokes: (feedbackOf[zoneIndex] ?? []).filter((f) => f.photoIndex === photoIndex).flatMap((f) => f.strokes),
+    strokes: (feedbackOf[zoneIndex] ?? [])
+      .filter((f) => f.version === versionOf(zone)?.n && f.photoIndex === photoIndex)
+      .flatMap((f) => f.strokes),
   })));
 
   const [rendered, buildModule, fontBase64] = await Promise.all([
@@ -178,6 +177,8 @@ export async function exportReport(report: ReportDoc, zones: ZoneDoc[], lang: La
         comment: f.comment,
         deadline: formatDayMonth(f.deadline),
         status: t(lang, f.status === 'open' ? 'review.statusOpen' : 'review.statusAnswered'),
+        // Which photos it was about only matters once the zone has had more than one.
+        ...(zone.versions.length > 1 && { version: f.version }),
       })),
     };
   });

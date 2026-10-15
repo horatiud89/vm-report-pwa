@@ -69,6 +69,7 @@ export const ro: Dict = {
   'pdf.exported': 'Exportat',
   'pdf.photoUnavailable': 'Poza {n} nu a putut fi încărcată',
   'pdf.preparing': 'Se pregătește PDF-ul…',
+  'pdf.version': 'Versiunea {n}',
 
   'common.deadline': 'Termen {date}',
   'common.retry': 'Încearcă din nou',

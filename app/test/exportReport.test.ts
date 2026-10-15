@@ -177,18 +177,29 @@ describe('exportReport: feedback', () => {
     ],
   });
 
-  test('has the feedback of the latest version only, newest first, with author, role, date, comment, deadline and status', async () => {
+  test('lists the feedback of every version, newest first, with author, role, date, comment, deadline, status and version', async () => {
     feedback['women-wall-1'] = [
-      feedbackDoc({ id: 'old-version', version: 1, comment: 'about the first photos', createdAt: 1 }),
+      feedbackDoc({ id: 'older-version', version: 1, comment: 'about the first photos', createdAt: Date.UTC(2026, 9, 13, 9), status: 'answered' }),
       feedbackDoc({ id: 'first', version: 2, comment: 'first', createdAt: Date.UTC(2026, 9, 14, 9), status: 'answered', authorName: 'Petr Dvořák', authorRole: 'head_vm', deadline: '2026-11-02' }),
       feedbackDoc({ id: 'second', version: 2, comment: 'second', createdAt: Date.UTC(2026, 9, 15, 8) }),
     ];
     await exportReport(report(), zonesOf(zone()), 'en');
 
     expect(built().pdfReport.zones[0]?.feedback).toEqual([
-      { author: 'Jana Nováková', role: 'Area VM', date: '15 Oct 2026', comment: 'second', deadline: '20.10', status: 'Open' },
-      { author: 'Petr Dvořák', role: 'Head of VM', date: '14 Oct 2026', comment: 'first', deadline: '02.11', status: 'Answered' },
+      { author: 'Jana Nováková', role: 'Area VM', date: '15 Oct 2026', comment: 'second', deadline: '20.10', status: 'Open', version: 2 },
+      { author: 'Petr Dvořák', role: 'Head of VM', date: '14 Oct 2026', comment: 'first', deadline: '02.11', status: 'Answered', version: 2 },
+      { author: 'Jana Nováková', role: 'Area VM', date: '13 Oct 2026', comment: 'about the first photos', deadline: '20.10', status: 'Answered', version: 1 },
     ]);
+  });
+
+  test('a zone with a single version has no version on its feedback', async () => {
+    feedback['women-wall-1'] = [feedbackDoc({ id: 'f1', version: 1 }), feedbackDoc({ id: 'f2', version: 1, createdAt: Date.UTC(2026, 9, 15, 8) })];
+    const single = makeZone('women-wall-1', { state: 'needs_correction', versions: [{ n: 1, photos: [photoRef('women-wall-1', 0)], storeComment: '', createdAt: 1 }] });
+    await exportReport(report(), zonesOf(single), 'en');
+
+    const lines = built().pdfReport.zones[0]?.feedback ?? [];
+    expect(lines).toHaveLength(2);
+    for (const line of lines) expect('version' in line).toBe(false);
   });
 
   test('writes the status in the user language, and keeps the role in English', async () => {
@@ -214,10 +225,15 @@ describe('exportReport: feedback', () => {
 });
 
 describe('exportReport: photos', () => {
+  // Version 2 is the current one; its photos are the ones in the PDF.
   const zone = () => makeZone('women-wall-1', {
     state: 'needs_correction',
-    versions: [{ n: 1, photos: [photoRef('women-wall-1', 0), photoRef('women-wall-1', 1), photoRef('women-wall-1', 2)], storeComment: '', createdAt: 1 }],
+    versions: [
+      { n: 1, photos: [photoRef('women-wall-1', 0)], storeComment: '', createdAt: 1 },
+      { n: 2, photos: [photoRef('women-wall-1', 0, 2), photoRef('women-wall-1', 1, 2), photoRef('women-wall-1', 2, 2)], storeComment: '', createdAt: 2 },
+    ],
   });
+  const current = (n: number) => path('women-wall-1', n, 2);
   const square = (points: number[]) => ({ points });
 
   test('scales each photo to at most 1000 px on the long side and encodes it as JPEG', async () => {
@@ -228,15 +244,16 @@ describe('exportReport: photos', () => {
       expect(photo).toMatchObject({ width: 1000, height: 750 });
       expect(photo.dataUrl.startsWith('data:image/jpeg;base64,')).toBe(true);
     }
-    expect(photos.map((p) => decode(p.dataUrl).source)).toEqual([path('women-wall-1', 0), path('women-wall-1', 1), path('women-wall-1', 2)]);
+    expect(photos.map((p) => decode(p.dataUrl).source)).toEqual([current(0), current(1), current(2)]);
   });
 
-  test('draws the strokes of the feedback on the photo they belong to, from every feedback of the latest version', async () => {
+  test('draws the strokes of the feedback on the photo they belong to, from every feedback of the current version only', async () => {
     feedback['women-wall-1'] = [
-      feedbackDoc({ id: 'a', photoIndex: 1, strokes: [square([0.1, 0.1, 0.2, 0.2])] }),
-      feedbackDoc({ id: 'b', photoIndex: 1, strokes: [square([0.5, 0.5, 0.6, 0.6]), square([0.8, 0.8, 0.8, 0.8])] }),
-      feedbackDoc({ id: 'c', photoIndex: 0, strokes: [square([0.3, 0.3, 0.4, 0.4])] }),
-      feedbackDoc({ id: 'old', version: 0, photoIndex: 2, strokes: [square([0.9, 0.9, 0.95, 0.95])] }),
+      feedbackDoc({ id: 'a', version: 2, photoIndex: 1, strokes: [square([0.1, 0.1, 0.2, 0.2])] }),
+      feedbackDoc({ id: 'b', version: 2, photoIndex: 1, strokes: [square([0.5, 0.5, 0.6, 0.6]), square([0.8, 0.8, 0.8, 0.8])] }),
+      feedbackDoc({ id: 'c', version: 2, photoIndex: 0, strokes: [square([0.3, 0.3, 0.4, 0.4])] }),
+      // Given on the photos of version 1, which are no longer shown: its circles do not belong on the current photos.
+      feedbackDoc({ id: 'older-version', version: 1, photoIndex: 2, strokes: [square([0.9, 0.9, 0.95, 0.95])] }),
     ];
     await exportReport(report(), zonesOf(zone()), 'en');
 
@@ -246,16 +263,18 @@ describe('exportReport: photos', () => {
     expect(second?.dots).toBe(1);
     expect(third?.moves).toEqual([]);
     expect(third?.dots).toBe(0);
+    // ...but the feedback itself is still in the PDF.
+    expect(built().pdfReport.zones[0]?.feedback).toHaveLength(4);
   });
 
   test('a photo that cannot be loaded is named as unavailable, the others are still in the PDF and the PDF is still delivered', async () => {
-    fakeBrowser([path('women-wall-1', 1)]);
+    fakeBrowser([current(1)]);
     const share = vi.fn(async (_data: ShareData) => undefined);
     setSharing(share, true);
     await exportReport(report(), zonesOf(zone()), 'en');
 
     const [z] = built().pdfReport.zones;
-    expect(z?.photos.map((p) => decode(p.dataUrl).source)).toEqual([path('women-wall-1', 0), path('women-wall-1', 2)]);
+    expect(z?.photos.map((p) => decode(p.dataUrl).source)).toEqual([current(0), current(2)]);
     expect(z?.unavailablePhotos).toEqual([2]);
     expect(share).toHaveBeenCalledTimes(1);
   });

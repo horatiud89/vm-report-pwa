@@ -17,6 +17,8 @@ export interface PdfFeedback {
   deadline: string;
   /** The Open / Answered label in the user's language. */
   status: string;
+  /** Which version of the zone's photos it was given on; set only for a zone that has more than one version. */
+  version?: number;
 }
 
 export interface PdfZone {
@@ -156,12 +158,14 @@ function drawPhotoRow(c: Cursor, row: PdfPhoto[]): void {
 function drawFeedback(c: Cursor, f: PdfFeedback, lang: Lang): void {
   const width = CONTENT_WIDTH - FEEDBACK_INDENT;
   const comment = f.comment ? wrap(c, f.comment, 10, width) : [];
-  const height = lineHeight(9) * 2 + comment.length * lineHeight(10) + 2.5;
+  const versionHeight = f.version === undefined ? 0 : lineHeight(8);
+  const height = versionHeight + lineHeight(9) * 2 + comment.length * lineHeight(10) + 2.5;
   keepTogether(c, height);
   const top = c.y;
   const page = c.doc.getCurrentPageInfo().pageNumber;
   const x = MARGIN + FEEDBACK_INDENT;
 
+  if (f.version !== undefined) textLine(c, t(lang, 'pdf.version', { n: f.version }), { size: 8, color: MUTED, x });
   textLine(c, `${f.author} · ${f.role}`, { size: 9, color: MUTED, x, right: f.date });
   for (const line of comment) textLine(c, line, { size: 10, x });
   textLine(c, t(lang, 'common.deadline', { date: f.deadline }), { size: 9, color: MUTED, x, right: f.status });
