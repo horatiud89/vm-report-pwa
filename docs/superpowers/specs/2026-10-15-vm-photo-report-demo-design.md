@@ -2,7 +2,7 @@
 
 **Data:** 15.10.2026
 **Autor brief:** Horațiu Dumitrescu, Area VM Manager, Medicine
-**Stadiu:** de aprobat. Codul începe doar după aprobare.
+**Stadiu:** aprobat de Horațiu pe 15.10.2026 (Approve: varianta A).
 
 ---
 
@@ -107,7 +107,6 @@ Cei care verifică sunt Area VM, Area Manager, Head of VM și Director of Operat
    - Butonul **Approve** e pe fiecare zonă trimisă sau corectată.
    - Pe raport mai e butonul **Approve all without feedback**. El aprobă dintr-o dată toate zonele în statusul **Submitted**, adică cele care n-au primit niciodată feedback.
    - Zonele corectate se aprobă doar una câte una, după comparația înainte / după.
-   - *(De confirmat de Horațiu: vezi „Puncte de confirmat" la final.)*
 
 ### Ce face magazinul după feedback
 
@@ -355,10 +354,3 @@ Pașii detaliați, cu capturi de ecran, vin în planul de implementare.
 3. Copiezi câteva chei din Firebase în setările secrete ale repo-ului din GitHub.
 4. Pornești scriptul care creează conturile, apoi îți setezi parolele din emailuri.
 
----
-
-## Puncte de confirmat
-
-1. **Approve.** Documentul descrie acum varianta A.
-   - **A)** Approve există pe orice zonă trimisă sau corectată. Pe raport există și butonul „Approve all without feedback", care aprobă dintr-o dată zonele care n-au primit niciodată feedback.
-   - **B)** Approve apare doar pe zonele corectate, după feedback. Zonele fără feedback rămân Submitted.
