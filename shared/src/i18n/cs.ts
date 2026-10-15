@@ -23,7 +23,7 @@ export const cs: Dict = {
   'store.comment': 'Komentář (nepovinné)',
   'store.notInCampaign': 'Není součástí kampaně',
   'store.send': 'Odeslat',
-  'store.sendHint': 'Každá zóna potřebuje fotku nebo označení „Není součástí kampaně“.',
+  'store.sendHint': 'Každá zóna musí mít fotku nebo označení „Není součástí kampaně“.',
   'store.sendCorrection': 'Odeslat opravu',
   'store.draftExists': 'Už máte rozpracovaný report.',
 

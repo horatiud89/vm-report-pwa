@@ -7,7 +7,7 @@ export const ro: Dict = {
   'login.password': 'Parolă',
   'login.submit': 'Intră în cont',
   'login.reset': 'Setează sau resetează parola',
-  'reset.sent': 'Verifică-ți emailul: acolo găsești linkul pentru setarea parolei.',
+  'reset.sent': 'Verifică-ți emailul: ți-am trimis linkul pentru setarea parolei.',
 
   'nav.home': 'Rapoarte',
   'nav.overview': 'Panou general',
@@ -26,7 +26,7 @@ export const ro: Dict = {
   'store.send': 'Trimite',
   'store.sendHint': 'Fiecare zonă trebuie să aibă o poză sau marcajul „Nu face parte din campanie”.',
   'store.sendCorrection': 'Trimite corectura',
-  'store.draftExists': 'Ai deja o ciornă de raport.',
+  'store.draftExists': 'Ai deja o ciornă deschisă.',
 
   'review.new': 'Nou',
   'review.allCountries': 'Toate țările',
@@ -75,5 +75,5 @@ export const ro: Dict = {
   'push.zoneApproved': 'Zonă aprobată: {zone}',
   'push.allApproved': '{campaign}: zone aprobate ({n})',
   'push.reminderDayBefore': 'Nu uita: {zone} — termenul e mâine ({date})',
-  'push.reminderOverdue': 'Termen depășit: {zone} — termenul era {date}',
+  'push.reminderOverdue': 'Termen depășit: {zone} — trebuia corectată până pe {date}',
 };

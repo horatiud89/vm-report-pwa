@@ -23,7 +23,7 @@ export const sk: Dict = {
   'store.comment': 'Komentár (nepovinné)',
   'store.notInCampaign': 'Nie je súčasťou kampane',
   'store.send': 'Odoslať',
-  'store.sendHint': 'Každá zóna potrebuje fotku alebo označenie „Nie je súčasťou kampane“.',
+  'store.sendHint': 'Každá zóna musí mať fotku alebo označenie „Nie je súčasťou kampane“.',
   'store.sendCorrection': 'Odoslať opravu',
   'store.draftExists': 'Už máte rozpracovaný report.',
 
