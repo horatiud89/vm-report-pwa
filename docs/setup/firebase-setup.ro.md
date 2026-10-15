@@ -57,6 +57,7 @@ Fără Blaze nu merg pozele și funcțiile din spatele aplicației. La volumul d
 21. În tab-ul **Sign-in method** apasă **Email/Password**.
 22. Pornește primul comutator, **Enable**. Al doilea, **Email link (passwordless sign-in)**, rămâne oprit. Apasă **Save**.
     În listă, Email/Password apare cu **Enabled**.
+    Opțional, dar recomandat: tot în **Authentication**, deschide tab-ul **Settings** → **User actions**, debifează **Enable create (sign-up)** și apasă **Save**. Așa nimeni din afară nu-și poate face singur cont. Conturile de demo le creează oricum scriptul de la pasul 45, iar setarea parolei din email merge mai departe.
 
 ## 6. Aplicația web și valorile ei
 
@@ -134,9 +135,11 @@ GitHub publică aplicația în locul tău printr-un „service account”: un co
 43. În dreapta apasă **Run workflow**, lasă branch-ul care e deja ales și apasă butonul verde **Run workflow**.
 44. Așteaptă 5–10 minute, până când rularea primește o bifă verde.
     Dacă rularea se termină verde în câteva secunde, secretul `FIREBASE_SERVICE_ACCOUNT` lipsește sau are alt nume (pasul 41).
+    După prima publicare, așteaptă încă vreo 5 minute înainte să testezi aplicația: Firebase construiește indexurile bazei de date, iar până atunci listele de rapoarte pot da eroare.
 
 Dacă apare un X roșu, apasă pe rulare, apoi pe pasul roșu, și citește ultimele rânduri:
 
+- **Lipsește un secret** („Missing GitHub secrets: …”): mesajul dă numele secretelor care lipsesc sau sunt scrise altfel (valorile nu apar niciodată). Adaugă-le cum scrie la pasul 41, cu numele exact din tabel, apoi pe GitHub apasă **Re-run jobs** → **Re-run all jobs**.
 - **Lipsește un rol sau o permisiune** („Permission denied”, „does not have … permission”, „roles/…”): eroarea spune ce rol lipsește și pentru ce cont. În Google Cloud mergi la **IAM & Admin** → **IAM**, apasă creionul de lângă contul respectiv, apoi **+ Add another role**, alege rolul și apasă **Save**. Dacă adresa din eroare nu e în listă, apasă **+ Grant access**, lipește adresa la **New principals**, alege rolul și apasă **Save**. Pe GitHub apasă **Re-run jobs** → **Re-run all jobs**.
 - **Eroarea spune să încerci din nou peste câteva minute** (se întâmplă la prima publicare, până pornește Google serviciile): așteaptă 5 minute și apasă **Re-run all jobs**.
 
@@ -147,6 +150,7 @@ De acum încolo, aplicația se republică singură la fiecare modificare de cod.
 45. Tot în **Actions**, alege în stânga **Seed demo**, apasă **Run workflow** și apoi butonul verde **Run workflow**.
 46. Așteaptă bifa verde (1–2 minute).
     Acum există magazinul 850 Palladium Praha, cu cele 33 de zone, și cele 5 conturi.
+    Dacă apare un X roșu cu „Missing GitHub secrets: …”, lipsesc secretele din mesaj (de obicei `DEMO_EMAIL`): adaugă-le la pasul 41 și rulează din nou.
 
 Conturile folosesc adresa ta de Gmail cu un sufix după „+”. Gmail ignoră tot ce e între „+” și „@”, așa că toate emailurile ajung în inboxul tău, dar Firebase le vede ca 5 conturi diferite. Dacă adresa ta ar fi `numele.tau@gmail.com`, conturile sunt:
 

@@ -2,6 +2,7 @@ name: Seed demo
 
 # Manual run: creates the demo store, its zones and the demo accounts.
 # Safe to run again; existing data is kept.
+# A missing FIREBASE_PROJECT_ID or DEMO_EMAIL fails at once with "Missing GitHub secrets: <names>".
 
 on:
   workflow_dispatch:
@@ -24,6 +25,22 @@ jobs:
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "Firebase not configured yet — skipping seed"
+          fi
+
+      # A missing secret would otherwise fail a later step with an unclear error. Only names are printed, never values.
+      - name: Check required secrets
+        if: steps.guard.outputs.configured == 'true'
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          DEMO_EMAIL: ${{ secrets.DEMO_EMAIL }}
+        run: |
+          missing=""
+          for name in FIREBASE_PROJECT_ID DEMO_EMAIL; do
+            if [ -z "${!name}" ]; then missing="${missing:+$missing, }$name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing GitHub secrets: $missing"
+            exit 1
           fi
 
       - uses: actions/checkout@v4
