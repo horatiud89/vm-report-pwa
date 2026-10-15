@@ -801,6 +801,13 @@ h3 {
   margin-bottom: 16px;
 }
 
+/* A deadline before today: Send stays off until another date is chosen */
+.feedback-form > input[aria-invalid='true'] {
+  border-color: var(--error);
+  box-shadow: inset 0 0 0 1px var(--error);
+  color: var(--error);
+}
+
 /* Drawing on a photo: the surface is exactly the photo, so a point on it is a fraction of the photo */
 .annotate {
   margin-bottom: 16px;

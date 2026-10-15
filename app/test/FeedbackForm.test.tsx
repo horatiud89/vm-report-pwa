@@ -88,6 +88,21 @@ describe('FeedbackForm: what can be sent', () => {
     expect(deadline()).toHaveAttribute('min', '2026-10-15');
   });
 
+  test('a deadline before the store-local today keeps Send disabled and marks the date field invalid', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderForm();
+    await user.type(comment(), 'Move the mannequin');
+    expect(deadline()).not.toHaveAttribute('aria-invalid'); // nothing chosen yet is not an error
+
+    fireEvent.change(deadline(), { target: { value: '2026-10-14' } });
+    expect(send()).toBeDisabled();
+    expect(deadline()).toHaveAttribute('aria-invalid', 'true');
+
+    fireEvent.change(deadline(), { target: { value: '2026-10-15' } }); // today is fine
+    expect(send()).toBeEnabled();
+    expect(deadline()).not.toHaveAttribute('aria-invalid');
+  });
+
   test('the earliest deadline follows the store time zone, not the reviewer’s', () => {
     // 22:30 UTC on 15 Oct is already 16 Oct in Prague.
     vi.setSystemTime(Date.UTC(2026, 9, 15, 22, 30));

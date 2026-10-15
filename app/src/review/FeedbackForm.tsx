@@ -46,7 +46,10 @@ export function FeedbackForm({ report, zone, version, photoIndex, photoAlt, chil
   }, [marking]);
 
   const text = comment.trim();
-  const canSend = text.length > 0 && text.length <= MAX_COMMENT && deadline !== '' && !sending;
+  // The date picker's min does not stop a typed or remembered date; the server rejects one before today anyway.
+  const today = localDate(Date.now(), report.timezone);
+  const pastDeadline = deadline !== '' && deadline < today;
+  const canSend = text.length > 0 && text.length <= MAX_COMMENT && deadline !== '' && !pastDeadline && !sending;
 
   async function send(e: FormEvent) {
     e.preventDefault();
@@ -99,7 +102,8 @@ export function FeedbackForm({ report, zone, version, photoIndex, photoAlt, chil
           id={`${ids}-deadline`}
           type="date"
           value={deadline}
-          min={localDate(Date.now(), report.timezone)}
+          min={today}
+          aria-invalid={pastDeadline || undefined}
           onChange={(e) => setDeadline(e.target.value)}
         />
 
