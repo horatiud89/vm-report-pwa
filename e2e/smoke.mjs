@@ -101,27 +101,35 @@ async function inside() {
   const { getAuth } = await import('firebase-admin/auth');
   const { getFirestore } = await import('firebase-admin/firestore');
   const admin = initializeApp({ projectId: PROJECT_ID }, 'smoke');
-  const backend = { db: getFirestore(admin) };
-  for (const tag of ['store850', 'headofvm', 'director', 'avmcz', 'amcz']) {
-    const user = await getAuth(admin).getUserByEmail(account(tag));
-    await getAuth(admin).updateUser(user.uid, { password: PASSWORD });
-  }
-
-  const preview = spawn(process.execPath, [
-    join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js'), 'preview',
-    '--outDir', process.env.SMOKE_DIST, '--host', '127.0.0.1', '--port', String(PREVIEW_PORT), '--strictPort',
-  ], { cwd: join(ROOT, 'app'), stdio: ['ignore', 'ignore', 'inherit'] });
-  const previewExit = new Promise((resolve) => preview.once('exit', resolve));
-  let browser;
   try {
-    await waitForHttp(APP_URL, previewExit);
-    const { chromium } = await import('playwright-core');
-    browser = await chromium.launch({ executablePath: CHROMIUM });
-    await cycle(browser, backend);
+    /** Firestore as the admin, and the uid of each demo account by its tag. */
+    const backend = { db: getFirestore(admin), uids: {} };
+    for (const tag of ['store850', 'headofvm', 'director', 'avmcz', 'amcz']) {
+      const user = await getAuth(admin).getUserByEmail(account(tag));
+      await getAuth(admin).updateUser(user.uid, { password: PASSWORD });
+      backend.uids[tag] = user.uid;
+    }
+
+    const preview = spawn(process.execPath, [
+      join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js'), 'preview',
+      '--outDir', process.env.SMOKE_DIST, '--host', '127.0.0.1', '--port', String(PREVIEW_PORT), '--strictPort',
+    ], { cwd: join(ROOT, 'app'), stdio: ['ignore', 'ignore', 'inherit'] });
+    const previewExit = new Promise((resolve) => preview.once('exit', resolve));
+    let browser;
+    try {
+      await waitForHttp(APP_URL, previewExit);
+      const { chromium } = await import('playwright-core');
+      browser = await chromium.launch({ executablePath: CHROMIUM });
+      await cycle(browser, backend);
+    } finally {
+      try {
+        await browser?.close();
+      } finally {
+        preview.kill('SIGTERM');
+        await previewExit;
+      }
+    }
   } finally {
-    await browser?.close();
-    preview.kill('SIGTERM');
-    await previewExit;
     await deleteApp(admin);
   }
 }
@@ -152,6 +160,9 @@ async function waitForHttp(url, exited) {
 
 const shots = [];
 const pageErrors = [];
+/** The language each page must be in when it is photographed; English unless chooseLanguage changed it. */
+const expectedLang = new Map();
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function phone(browser, viewport = PHONE, options = {}) {
   const context = await browser.newContext({ viewport, baseURL: APP_URL, ...options });
@@ -173,13 +184,16 @@ async function settled(page) {
  */
 const SCREENSHOT_STYLE = '.app-header, .action-bar { position: static !important; }';
 
-/** Screenshot of the whole page, after checking it does not scroll sideways. */
+/** Screenshot of the whole page, after checking it is in the expected language and does not scroll sideways. */
 async function screen(page, name) {
   await settled(page);
-  const { scrollWidth, innerWidth } = await page.evaluate(() => ({
+  const { lang, scrollWidth, innerWidth } = await page.evaluate(() => ({
+    lang: document.documentElement.lang,
     scrollWidth: document.documentElement.scrollWidth,
     innerWidth: window.innerWidth,
   }));
+  const expected = expectedLang.get(page) ?? 'en';
+  if (lang !== expected) throw new Error(`${name}: the page is in "${lang}", expected "${expected}"`);
   if (scrollWidth > innerWidth) throw new Error(`${name}: the page scrolls sideways (${scrollWidth} px > ${innerWidth} px)`);
   const file = `${String(shots.length + 1).padStart(2, '0')}-${name}.png`;
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -260,10 +274,25 @@ async function checkStoredPhoto({ db }, reportId, url) {
   console.log(`  photo stored as ${stored.width}×${stored.height} (${Math.round(bytes.length / 1024)} kB)`);
 }
 
-async function chooseLanguage(page, lang) {
+/**
+ * Chooses the language in Settings and waits until the server has it: the page switches at once on its local copy
+ * of the write, and a reload before the write is stored would come back in the old language.
+ */
+async function chooseLanguage(page, { db, uids }, tag, lang) {
   await page.goto('/settings');
   await page.getByRole('radio', { name: LANG_NAME[lang] }).click(); // checked once the saved language comes back
-  await page.waitForFunction((code) => document.documentElement.lang === code, lang);
+  const user = db.doc(`users/${uids[tag]}`);
+  for (let tries = 0; (await user.get()).get('language') !== lang; tries += 1) {
+    if (tries === 150) throw new Error(`the language of ${tag} was not saved as "${lang}"`);
+    await sleep(100);
+  }
+  expectedLang.set(page, lang);
+}
+
+/** Opens `path` and waits until the page shows the language it is expected in. */
+async function gotoInLanguage(page, path) {
+  await page.goto(path);
+  await page.waitForFunction((code) => document.documentElement.lang === code, expectedLang.get(page) ?? 'en');
 }
 
 async function cycle(browser, backend) {
@@ -342,7 +371,7 @@ async function cycle(browser, backend) {
   await reviewer.mouse.down();
   for (let a = 0; a <= 2 * Math.PI + 0.01; a += Math.PI / 16) await reviewer.mouse.move(cx + r * Math.cos(a), cy + r * Math.sin(a));
   await reviewer.mouse.up();
-  if (!(await reviewer.getByRole('button', { name: 'Undo' }).isEnabled())) throw new Error('the stroke was not recorded');
+  await pressable(reviewer.getByRole('button', { name: 'Undo' })); // enabled once the stroke is recorded
   await reviewer.getByLabel('Feedback', { exact: true }).fill('Přeskládat trička podle barev, prosím.');
   await reviewer.getByLabel('Deadline', { exact: true }).fill(pragueDate(1));
   await screen(reviewer, 'review-zone-feedback-form');
@@ -406,16 +435,16 @@ async function cycle(browser, backend) {
   await reviewer.goto('/settings');
   await screen(reviewer, 'settings');
   for (const lang of ['cs', 'sk', 'ro']) {
-    for (const [page, path, name] of [[store, '/', 'store-home'], [reviewer, `/r/${reportId}`, 'review-report']]) {
-      await chooseLanguage(page, lang);
+    for (const [page, tag, path, name] of [[store, 'store850', '/', 'store-home'], [reviewer, 'headofvm', `/r/${reportId}`, 'review-report']]) {
+      await chooseLanguage(page, backend, tag, lang);
       await page.setViewportSize(SMALL_PHONE);
-      await page.goto(path);
+      await gotoInLanguage(page, path);
       await page.getByRole('heading', { level: 1 }).waitFor();
       await screen(page, `${name}-360-${lang}`);
       await page.setViewportSize(PHONE);
     }
   }
-  await reviewer.goto('/settings');
+  await gotoInLanguage(reviewer, '/settings');
   await screen(reviewer, 'settings-ro');
 
   step('iPhone Safari shows how to add the app to the Home Screen');
@@ -427,7 +456,7 @@ async function cycle(browser, backend) {
   await screen(iphone, 'iphone-safari-install-guide');
 
   step('Log out');
-  await store.goto('/settings');
+  await gotoInLanguage(store, '/settings');
   await store.getByRole('button', { name: 'Ieși din cont' }).click();
   await store.waitForURL(`${APP_URL}/login`);
 

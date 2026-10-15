@@ -17,11 +17,11 @@ Dacă ceva nu merge, fă o captură de ecran și notează ora. Cu ele găsesc re
 
 ### iPhone
 
-- [ ] Deschide linkul în **Safari** (nu din Chrome sau din aplicația Gmail). Sus apare caseta „Add the app to your Home Screen”, cu 3 pași.
+- [ ] Deschide linkul în **Safari** (nu din Chrome sau din aplicația Gmail) și intră cu contul Store (`+store850`). Sus apare caseta „Add the app to your Home Screen”, cu 3 pași.
 - [ ] Compară pașii din casetă cu ce vezi pe iPhone, în limba telefonului: butonul de partajare (pătratul cu săgeata în sus) și opțiunea **Add to Home Screen**. Pe iOS-urile noi, butonul poate fi ascuns în meniul **•••** din Safari, iar opțiunea poate fi mai jos în listă. Notează cum se numesc exact pe telefonul tău, ca să corectez textul dacă e altfel.
 - [ ] Adaugă aplicația pe ecranul principal. Apare iconița **VM Report**.
-- [ ] Deschide aplicația de pe iconiță. Se deschide pe tot ecranul, fără bara Safari, și caseta de instalare nu mai apare.
-- [ ] Intră cu contul Store (`+store850`). Apare butonul **Turn on notifications**.
+- [ ] Deschide aplicația de pe iconiță. Se deschide pe tot ecranul, fără bara Safari (aplicația de pe ecran îți cere din nou login).
+- [ ] Intră din nou cu contul Store. Caseta de instalare nu mai apare; în locul ei e butonul **Turn on notifications**.
 - [ ] Apasă-l și permite notificările (**Allow**). Butonul dispare.
 
 ### Laptop (Chrome)
@@ -31,7 +31,7 @@ Dacă ceva nu merge, fă o captură de ecran și notează ora. Cu ele găsesc re
 
 ### Android
 
-- [ ] Deschide linkul în Chrome. Apare butonul **Install app** (sau, din meniul ⋮, **Install app** / **Add to Home screen**). Instalează aplicația; apare iconița.
+- [ ] Deschide linkul în Chrome și intră în cont. Apare butonul **Install app** (sau, din meniul ⋮, **Install app** / **Add to Home screen**). Instalează aplicația; apare iconița.
 - [ ] Deschide aplicația de pe iconiță, intră în cont și apasă **Turn on notifications** → **Allow**.
 
 ## 2. Ciclul complet: iPhone = Store, laptop = Head of VM
@@ -44,14 +44,14 @@ Dacă ceva nu merge, fă o captură de ecran și notează ora. Cu ele găsesc re
 - [ ] O poză mare: dacă iPhone-ul face poze de 48 MP (iPhone 14 Pro sau mai nou), fă una la rezoluție maximă și urc-o la o zonă. În aplicația Camera e butonul **HEIF MAX** sus; dacă nu-l vezi, pornește **Settings → Camera → Formats → Resolution Control**. Poza se încarcă în câteva secunde, fără eroare, și apare dreaptă.
 - [ ] La o zonă scrie un comentariu cu diacritice, de ex. „Mută manechinii în față și așază tricourile pe culori”. Apare „Saved”.
 - [ ] Închide aplicația de tot (glisează-o în sus din lista de aplicații deschise) și deschide-o din nou. Ciorna e tot acolo, cu pozele și comentariul.
-- [ ] Lasă poze la 3–4 zone și marchează restul **Not part of this campaign**. În listă, fiecare zonă își arată statusul.
+- [ ] Pune poze la 3–4 zone și marchează restul cu **Not part of this campaign**. În listă, fiecare zonă își arată statusul.
 - [ ] **Send** devine activ abia când fiecare zonă are poză sau marcajul. Apasă **Send**.
 
 ### Feedbackul
 
-- [ ] Laptop: în cel mult un minut vine notificarea „850 Palladium Praha sent a report: …”. Click pe ea: se deschide raportul. În lista de rapoarte, raportul are eticheta **New**.
+- [ ] Laptop: în cel mult un minut vine notificarea „850 Palladium Praha sent a report: …”. Înainte să dai click, uită-te în lista de rapoarte: raportul are eticheta **New**. Apoi click pe notificare: se deschide raportul, iar eticheta **New** dispare. Dacă aplicația e deschisă pe ecran, notificarea apare jos, în aplicație, cu butonul **Open**.
 - [ ] Laptop: poza verticală apare dreaptă și aici.
-- [ ] Laptop: deschide Women's Image, apasă **Mark on photo** și desenează un cerc. Scrie feedbackul, alege deadline mâine și apasă **Send feedback**. Zona devine **Needs correction**.
+- [ ] Laptop: deschide Women's Image, apasă **Mark on photo** și desenează un cerc. Scrie feedbackul, alege ca deadline ziua de mâine și apasă **Send feedback**. Zona devine **Needs correction**.
 - [ ] iPhone: în cel mult un minut vine notificarea „Feedback: Women's Image — deadline …”. Apasă pe ea: se deschide direct zona.
 - [ ] iPhone: cercul e pe poză exact în locul în care l-ai desenat pe laptop.
 - [ ] iPhone: pe ecranul principal, zona apare sus, la **Corrections to do**, cu deadline-ul.
@@ -59,7 +59,7 @@ Dacă ceva nu merge, fă o captură de ecran și notează ora. Cu ele găsesc re
 ### Corectura
 
 - [ ] iPhone: în zonă adaugă o poză nouă, scrie un comentariu și apasă **Send correction**. Ajungi pe ecranul principal, iar zona dispare de la **Corrections to do**.
-- [ ] Laptop: în cel mult un minut vine notificarea „850 Palladium Praha sent a correction: Women's Image”. Click pe ea: se deschide zona.
+- [ ] Laptop: în cel mult un minut vine notificarea „850 Palladium Praha sent a correction: Women's Image”. Click pe ea: se deschide zona. Dacă aplicația e deschisă pe ecran, notificarea apare jos, în aplicație, cu butonul **Open**.
 - [ ] Laptop: la **Before and after** vezi poza veche, cu cercul, lângă poza nouă.
 - [ ] Laptop: apasă **Approve**. Pe iPhone vine notificarea „Approved: Women's Image”.
 - [ ] Laptop: pe raport apasă **Approve all without feedback** și confirmă. Zonele care erau **Submitted** devin **Approved**. Pe iPhone vine o singură notificare pentru tot raportul.
@@ -67,7 +67,7 @@ Dacă ceva nu merge, fă o captură de ecran și notează ora. Cu ele găsesc re
 
 ## 3. Ciclul invers: laptop = Store, iPhone = Head of VM
 
-Aici testezi pe iPhone desenatul, notificările pentru cei care verifică și PDF-ul.
+Aici testezi pe iPhone desenatul, notificările pentru Head of VM și PDF-ul.
 
 - [ ] iPhone: **Settings** → **Log out**, apoi intră cu contul Head of VM. Dacă apare **Turn on notifications**, apasă-l.
 - [ ] Laptop: ieși din Head of VM și intră cu contul Store.
@@ -77,8 +77,9 @@ Aici testezi pe iPhone desenatul, notificările pentru cei care verifică și PD
 - [ ] iPhone: o atingere scurtă pe poză lasă un punct roșu. **Undo** șterge ultimul semn.
 - [ ] iPhone: scrie feedbackul, alege deadline-ul din calendar și apasă **Send feedback**. Pe laptop vine notificarea, iar cercurile și punctul apar în același loc.
 - [ ] Laptop: trimite corectura. Pe iPhone vine notificarea, iar **Before and after** arată poza veche cu cercuri lângă cea nouă. Apasă **Approve**.
+- [ ] iPhone: dă feedback cu un cerc și la o a doua zonă, pe care n-o corectezi.
 - [ ] iPhone: pe raport apasă **Export PDF**. Se deschide meniul de partajare (Save to Files, AirDrop, Mail…) sau PDF-ul se descarcă. Salvează-l.
-- [ ] Deschide PDF-ul: are toate cele 33 de zone, pozele se văd, cercurile sunt pe poze, iar diacriticele (ă, â, î, ș, ț, ř, č) apar corect.
+- [ ] Deschide PDF-ul: are toate cele 33 de zone și pozele se văd; la zona cu feedback deschis cercul e pe poză (la zona aprobată apare poza nouă, fără cercuri), iar diacriticele (ă, â, î, ș, ț, ř, č) apar corect.
 
 ## 4. Android
 
@@ -88,7 +89,7 @@ Repetă pe Android punctele de bază: o dată cu Android ca Store și laptopul c
 - [ ] Notificarea pentru raportul nou ajunge pe dispozitivul Head of VM în cel mult un minut și deschide raportul.
 - [ ] Notificarea de feedback ajunge pe Android, când e Store, și deschide direct zona.
 - [ ] Desenatul cu degetul: pagina nu derulează, iar atingerea scurtă lasă un punct.
-- [ ] **Export PDF**: PDF-ul se deschide, cu poze, cercuri și diacritice corecte.
+- [ ] **Export PDF**: PDF-ul se deschide, cu poze și diacritice corecte; la o zonă cu feedback deschis, cercul e pe poză.
 
 ## 5. Limbile
 

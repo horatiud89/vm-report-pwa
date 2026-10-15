@@ -106,7 +106,7 @@ GitHub publică aplicația în locul tău printr-un „service account”: un co
 36. Apasă pe adresa lui și deschide tab-ul **Keys**.
 37. Apasă **Add key** → **Create new key**, alege **JSON** și apasă **Create**.
     Laptopul descarcă un fișier `.json`. E singura valoare cu adevărat secretă din tot ghidul: n-o trimite pe email sau pe chat. Celelalte valori ajung oricum în aplicația publicată.
-    Dacă Google îți spune că nu ai voie să creezi chei, proiectul e sub o organizație de firmă: fă-l cu contul personal de Gmail.
+    Dacă Google îți spune că nu ai voie să creezi chei, proiectul e sub o organizație de firmă: ia-o de la capăt cu un proiect creat din contul personal de Gmail.
 38. Deschide fișierul cu Notepad (Windows) sau TextEdit (Mac) și copiază tot, de la prima `{` până la ultima `}`. E `FIREBASE_SERVICE_ACCOUNT`; îl lipești direct în GitHub la pasul 41.
 
 ## 9. Secretele din GitHub
@@ -133,10 +133,11 @@ GitHub publică aplicația în locul tău printr-un „service account”: un co
 42. În repo deschide tab-ul **Actions** și alege în stânga **Deploy**.
 43. În dreapta apasă **Run workflow**, lasă branch-ul care e deja ales și apasă butonul verde **Run workflow**.
 44. Așteaptă 5–10 minute, până când rularea primește o bifă verde.
+    Dacă rularea se termină verde în câteva secunde, secretul `FIREBASE_SERVICE_ACCOUNT` lipsește sau are alt nume (pasul 41).
 
 Dacă apare un X roșu, apasă pe rulare, apoi pe pasul roșu, și citește ultimele rânduri:
 
-- **Lipsește un rol sau o permisiune** („Permission denied”, „does not have … permission”, „roles/…”): eroarea spune ce rol lipsește și pentru ce cont. În Google Cloud mergi la **IAM & Admin** → **IAM**, apasă creionul de lângă contul respectiv, apoi **+ Add another role**, alege rolul și apasă **Save**. Pe GitHub apasă **Re-run jobs** → **Re-run all jobs**.
+- **Lipsește un rol sau o permisiune** („Permission denied”, „does not have … permission”, „roles/…”): eroarea spune ce rol lipsește și pentru ce cont. În Google Cloud mergi la **IAM & Admin** → **IAM**, apasă creionul de lângă contul respectiv, apoi **+ Add another role**, alege rolul și apasă **Save**. Dacă adresa din eroare nu e în listă, apasă **+ Grant access**, lipește adresa la **New principals**, alege rolul și apasă **Save**. Pe GitHub apasă **Re-run jobs** → **Re-run all jobs**.
 - **Eroarea spune să încerci din nou peste câteva minute** (se întâmplă la prima publicare, până pornește Google serviciile): așteaptă 5 minute și apasă **Re-run all jobs**.
 
 De acum încolo, aplicația se republică singură la fiecare modificare de cod.
@@ -164,7 +165,7 @@ Linkul aplicației e `https://` + Project ID + `.web.app`, de exemplu `https://v
 47. Deschide linkul. Vezi ecranul **Sign in**.
 48. Apasă **Set / forgot password**, scrie adresa cu `+store850` și apasă **Send link**.
 49. În Gmail vine un email „Reset your password for …” (dacă nu e în Inbox, uită-te în Spam). Deschide linkul din email, scrie parola și apasă **Save**.
-50. Repetă pașii 48–49 pentru celelalte 4 adrese. Fiecare email scrie adresa contului, ca să nu le încurci.
+50. Repetă pașii 48–49 pentru celelalte 4 adrese. În fiecare email apare adresa contului, așa că nu le încurci.
 51. Verifică un cont: pe ecranul **Sign in** scrie adresa cu `+store850` și parola ei, apoi apasă **Sign in**. Vezi „850 Palladium Praha” și butonul **New report**.
 
 ## 13. Curățenie
