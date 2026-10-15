@@ -12,10 +12,12 @@ export function FeedbackNote({ feedback, report, showStatus = false }: { feedbac
   const { t, lang } = useT();
   const open = feedback.status === 'open';
   const overdue = open && isOverdue(feedback.deadline, Date.now(), report.timezone);
+  const role = ROLE_LABEL[feedback.authorRole];
   return (
     <article className="feedback-note">
       <p className="feedback-author">
-        <strong>{feedback.authorName}</strong> · {ROLE_LABEL[feedback.authorRole]}
+        {/* A demo account is named after its role ("Head of VM"): the role is then not written twice. */}
+        <strong>{feedback.authorName}</strong>{role !== feedback.authorName && ` · ${role}`}
         <span className="muted">{formatDate(lang, feedback.createdAt, report.timezone)}</span>
       </p>
       {feedback.comment && <p className="comment-text">{feedback.comment}</p>}

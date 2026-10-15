@@ -171,6 +171,13 @@ describe('ReviewZonePage: feedback', () => {
     expect(within(photoSection(1)).queryByRole('article')).not.toBeInTheDocument();
   });
 
+  test('an author whose name is the role label (Head of VM) is not written twice', () => {
+    renderPage({ z: zone({ state: 'needs_correction' }), feedbacks: [feedback({ authorRole: 'head_vm', authorName: 'Head of VM' })] });
+    const author = within(photoSection(1)).getByRole('article').querySelector('.feedback-author') as HTMLElement;
+    expect(author.textContent?.match(/Head of VM/g)).toHaveLength(1);
+    expect(author).not.toHaveTextContent('·');
+  });
+
   test('an open feedback past its deadline reads Overdue', () => {
     renderPage({ z: zone({ state: 'needs_correction' }), feedbacks: [feedback({ deadline: '2026-10-14' })] });
     const note = within(photoSection(1)).getByRole('article');

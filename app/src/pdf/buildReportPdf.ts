@@ -166,7 +166,8 @@ function drawFeedback(c: Cursor, f: PdfFeedback, lang: Lang): void {
   const x = MARGIN + FEEDBACK_INDENT;
 
   if (f.version !== undefined) textLine(c, t(lang, 'pdf.version', { n: f.version }), { size: 8, color: MUTED, x });
-  textLine(c, `${f.author} · ${f.role}`, { size: 9, color: MUTED, x, right: f.date });
+  // A demo account is named after its role ("Head of VM"): the role is then not written twice.
+  textLine(c, f.role === f.author ? f.author : `${f.author} · ${f.role}`, { size: 9, color: MUTED, x, right: f.date });
   for (const line of comment) textLine(c, line, { size: 10, x });
   textLine(c, t(lang, 'common.deadline', { date: f.deadline }), { size: 9, color: MUTED, x, right: f.status });
 

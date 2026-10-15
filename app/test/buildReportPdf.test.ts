@@ -145,6 +145,12 @@ describe('buildReportPdf', () => {
     ]));
   });
 
+  test('writes the role only when it is not the author name already', () => {
+    build(report([zone({ feedback: [feedback({ author: 'Head of VM', role: 'Head of VM' })] })]));
+    expect(drawn).toContain('Head of VM');
+    expect(drawn.some((s) => s.includes('Head of VM · Head of VM'))).toBe(false);
+  });
+
   test('labels a feedback with its version, above the author, only when it has one', () => {
     build(report([zone({ feedback: [feedback({ version: 2, comment: 'Nové' }), feedback({ version: 1, comment: 'Staré' })] })]));
     expect(drawn.filter((s) => s.startsWith('Version'))).toEqual(['Version 2', 'Version 1']);
