@@ -210,6 +210,15 @@ describe('updateDraftZone', () => {
     await fails(call({ reportId: undefined }), 'invalid-argument');
   });
 
+  test('a request without data, or without photos, is invalid-argument, not an internal error', async () => {
+    const reportId = await draft();
+    type Args = Parameters<typeof updateDraftZone>[1];
+    await fails(updateDraftZone(storeCaller, null as unknown as Args, d), 'invalid-argument');
+    await fails(updateDraftZone(storeCaller, undefined as unknown as Args, d), 'invalid-argument');
+    await fails(updateDraftZone(storeCaller, { reportId, zoneId: 'women-image' } as Args, d), 'invalid-argument');
+    await fails(updateDraftZone(storeCaller, { reportId, zoneId: 'women-image', photos: null } as unknown as Args, d), 'invalid-argument');
+  });
+
   test('comment is limited to 500 characters', async () => {
     const reportId = await draft();
     await fails(saveZone(reportId, 'women-image', [], { storeComment: 'x'.repeat(501) }), 'invalid-argument');

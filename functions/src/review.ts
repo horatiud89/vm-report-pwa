@@ -117,8 +117,8 @@ export async function sendCorrection(
   const storeId = requireStore(c);
   const reportId = docId(data?.reportId, 'reportId');
   const zoneId = docId(data?.zoneId, 'zoneId');
-  const photos = parsePhotos(data.photos, 1);
-  const storeComment = typeof data.storeComment === 'string' ? data.storeComment.trim() : null;
+  const photos = parsePhotos(data?.photos, 1);
+  const storeComment = typeof data?.storeComment === 'string' ? data.storeComment.trim() : null;
   if (storeComment === null || storeComment.length > MAX_STORE_COMMENT) throw invalid(`comment must be at most ${MAX_STORE_COMMENT} characters`);
 
   const now = d.now();

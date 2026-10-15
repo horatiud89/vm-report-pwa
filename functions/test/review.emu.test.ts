@@ -402,6 +402,11 @@ describe('sendCorrection', () => {
     await fails(send([elsewhere]), 'invalid-argument');
     await fails(send([ok], 'x'.repeat(501)), 'invalid-argument');
     await fails(send([ok], 5), 'invalid-argument');
+    await fails(send(null), 'invalid-argument');
+    await fails(send(undefined), 'invalid-argument');
+    type Args = Parameters<typeof sendCorrection>[1];
+    await fails(sendCorrection(storeCaller, null as unknown as Args, d), 'invalid-argument');
+    await fails(sendCorrection(storeCaller, undefined as unknown as Args, d), 'invalid-argument');
     expect((await getZone(reportId, ZONE)).versions).toHaveLength(1);
     expect((await getFeedback(reportId, ZONE)).map((f) => f.status)).toEqual(['open']);
 

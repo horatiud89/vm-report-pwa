@@ -55,8 +55,10 @@ export async function updateDraftZone(
   const storeId = requireStore(c);
   const reportId = docId(data?.reportId, 'reportId');
   const zoneId = docId(data?.zoneId, 'zoneId');
-  const photos = parsePhotos(data.photos);
-  const { storeComment, notInCampaign } = data;
+  // Every field is read null-safely: a request without data is invalid-argument, never an internal error.
+  const photos = parsePhotos(data?.photos);
+  const storeComment = data?.storeComment;
+  const notInCampaign = data?.notInCampaign;
   if (typeof storeComment !== 'string' || storeComment.length > MAX_STORE_COMMENT) throw invalid(`comment must be at most ${MAX_STORE_COMMENT} characters`);
   if (typeof notInCampaign !== 'boolean') throw invalid('notInCampaign must be true or false');
   if (notInCampaign && photos.length > 0) throw invalid('a zone that is not part of the campaign cannot have photos');
