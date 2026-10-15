@@ -6,8 +6,9 @@ import { currentPushSupported } from './platform';
 export type PushResult = 'granted' | 'denied' | 'unsupported';
 export interface ForegroundMessage { title: string; body: string; link?: string }
 
-/** The token this device added to its user's fcmTokens, so logout removes exactly that one. */
+/** The token this device added to a user's fcmTokens, and that user, so logout removes exactly that one. */
 const TOKEN_KEY = 'vm-report.pushToken';
+interface Remembered { uid: string; token: string }
 
 /** `serviceWorker.ready` never settles without a service worker (vite dev); give up instead of hanging. */
 const SW_WAIT_MS = 10_000;
@@ -29,9 +30,13 @@ export async function enablePush(uid: string): Promise<PushResult> {
     const [answer, supported] = await Promise.all([asked, isSupported()]);
     if (!supported) return 'unsupported';
     if (answer !== 'granted') return 'denied';
+    // A token left by another account (its logout could not take it off, e.g. offline) still brings that account's
+    // pushes. Deleted first, FCM hands out a fresh token; if it cannot be deleted, nothing is registered.
+    const left = rememberedToken();
+    if (left && left.uid !== uid) await deleteDeviceToken();
     const token = await getToken(getMessaging(app), { vapidKey, serviceWorkerRegistration: await appServiceWorker() });
     await updateDoc(doc(db, 'users', uid), { fcmTokens: arrayUnion(token) });
-    rememberToken(token);
+    rememberToken({ uid, token });
     refreshedFor = uid;
     return 'granted';
   } catch {
@@ -41,14 +46,17 @@ export async function enablePush(uid: string): Promise<PushResult> {
 
 /**
  * Stops push for this device: removes its remembered token from users/{uid} and deletes it at FCM.
- * Called on logout before signing out (the write needs the session). Never throws.
+ * Called on logout before signing out (the write needs the session). Never throws. The token is forgotten only
+ * once it is off its user's document; until then the next account on this device gets a fresh one (enablePush).
  */
 export async function disablePush(uid: string): Promise<void> {
   refreshedFor = null;
-  const token = rememberedToken();
-  if (!token) return;
-  rememberToken(null);
-  await Promise.allSettled([removeFromUser(uid, token), deleteDeviceToken()]);
+  const remembered = rememberedToken();
+  if (!remembered) return;
+  // Only its own account can take the token off its document (the rules let nobody write another user's).
+  const own = remembered.uid === uid;
+  const [removed] = await Promise.allSettled([own ? removeFromUser(uid, remembered.token) : Promise.resolve(), deleteDeviceToken()]);
+  if (own && removed.status === 'fulfilled') rememberToken(null);
 }
 
 /**
@@ -106,18 +114,26 @@ async function appServiceWorker(): Promise<ServiceWorkerRegistration> {
   }
 }
 
-function rememberedToken(): string | null {
+function rememberedToken(): Remembered | null {
+  let raw: string | null;
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    raw = localStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
   }
+  if (!raw) return null;
+  try {
+    const { uid, token } = JSON.parse(raw) as Partial<Remembered>;
+    if (typeof uid === 'string' && typeof token === 'string') return { uid, token };
+  } catch { /* below */ }
+  // A bare token from an earlier version of the app: whose it is is unknown, so it belongs to no account here.
+  return { uid: '', token: raw };
 }
 
 /** Storage may be unavailable (private mode); then logout cannot remove the token from the user document. */
-function rememberToken(token: string | null): void {
+function rememberToken(remembered: Remembered | null): void {
   try {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
+    if (remembered) localStorage.setItem(TOKEN_KEY, JSON.stringify(remembered));
     else localStorage.removeItem(TOKEN_KEY);
   } catch { /* see above */ }
 }

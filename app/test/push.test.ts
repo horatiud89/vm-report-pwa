@@ -189,6 +189,98 @@ describe('disablePush', () => {
     await expect(push.disablePush('u1')).resolves.toBeUndefined();
     expect(m.deleteToken).toHaveBeenCalledTimes(1);
   });
+
+  test('a token that could not be taken off the user is not forgotten: the next logout tries again', async () => {
+    await enabled();
+    m.updateDoc.mockRejectedValueOnce(new Error('offline'));
+    await push.disablePush('u1');
+    vi.clearAllMocks();
+
+    await push.disablePush('u1');
+    expect(m.updateDoc).toHaveBeenCalledExactlyOnceWith(userDoc, { fcmTokens: { remove: ['token-1'] } });
+  });
+});
+
+describe('the next account on the same device', () => {
+  /** FCM keeps handing out the same token until it is deleted; then it mints a new one. */
+  function fcmTokens() {
+    let current = 'token-1';
+    m.getToken.mockImplementation(async () => current);
+    m.deleteToken.mockImplementation(async () => { current = 'token-2'; return true; });
+  }
+
+  /** u1 enabled push, then logged out offline: the token stayed on users/u1 and at FCM. */
+  async function loggedOutOffline() {
+    fcmTokens();
+    await enabled();
+    m.updateDoc.mockRejectedValueOnce(new Error('offline'));
+    m.deleteToken.mockRejectedValueOnce(new Error('offline'));
+    await push.disablePush('u1');
+    vi.clearAllMocks();
+  }
+
+  const writes = () => m.updateDoc.mock.calls.map(([ref, data]) => [(ref as { path: string }).path, data]);
+
+  test('enablePush deletes the token left by the other account first, so it registers a fresh one', async () => {
+    await loggedOutOffline();
+    expect(await push.enablePush('u2')).toBe('granted');
+
+    expect(m.deleteToken).toHaveBeenCalledTimes(1);
+    expect(writes()).toEqual([['users/u2', { fcmTokens: { union: ['token-2'] } }]]);
+  });
+
+  test('refreshPush does the same when the next account signs in with notifications already allowed', async () => {
+    await loggedOutOffline();
+    notification.permission = 'granted';
+    push.refreshPush('u2');
+
+    await vi.waitFor(() => expect(m.updateDoc).toHaveBeenCalledTimes(1));
+    expect(writes()).toEqual([['users/u2', { fcmTokens: { union: ['token-2'] } }]]);
+    expect(m.deleteToken).toHaveBeenCalledTimes(1);
+  });
+
+  test('the fresh token is the new account’s: its logout removes it from that account', async () => {
+    await loggedOutOffline();
+    await push.enablePush('u2');
+    vi.clearAllMocks();
+
+    await push.disablePush('u2');
+    expect(writes()).toEqual([['users/u2', { fcmTokens: { remove: ['token-2'] } }]]);
+  });
+
+  test('when the old token cannot be deleted, nothing is registered for the new account', async () => {
+    await loggedOutOffline();
+    m.deleteToken.mockRejectedValueOnce(new Error('offline'));
+    expect(await push.enablePush('u2')).toBe('unsupported');
+    expect(m.updateDoc).not.toHaveBeenCalled();
+  });
+
+  test('the same account signing in again keeps its token: nothing to delete', async () => {
+    await loggedOutOffline();
+    expect(await push.enablePush('u1')).toBe('granted');
+    expect(m.deleteToken).not.toHaveBeenCalled();
+    expect(writes()).toEqual([['users/u1', { fcmTokens: { union: ['token-1'] } }]]);
+  });
+
+  test('a logout cannot take another account’s token off its own user, and keeps it for the next sign-in to replace', async () => {
+    await loggedOutOffline();
+    m.deleteToken.mockRejectedValueOnce(new Error('offline'));
+    await push.disablePush('u2'); // u2 signed in, but its re-registration never happened
+    expect(m.updateDoc).not.toHaveBeenCalled();
+
+    vi.clearAllMocks();
+    expect(await push.enablePush('u2')).toBe('granted');
+    expect(m.deleteToken).toHaveBeenCalledTimes(1);
+    expect(writes()).toEqual([['users/u2', { fcmTokens: { union: ['token-2'] } }]]);
+  });
+
+  test('a token remembered without its account (older app version) is never reused', async () => {
+    fcmTokens();
+    localStorage.setItem('vm-report.pushToken', 'token-1');
+    expect(await push.enablePush('u1')).toBe('granted');
+    expect(m.deleteToken).toHaveBeenCalledTimes(1);
+    expect(writes()).toEqual([['users/u1', { fcmTokens: { union: ['token-2'] } }]]);
+  });
 });
 
 describe('refreshPush', () => {
